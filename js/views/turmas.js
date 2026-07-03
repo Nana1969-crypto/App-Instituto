@@ -1,0 +1,142 @@
+/* Turmas: ofertas de cada curso, com professor, período e vagas */
+"use strict";
+
+const STATUS_TURMA = ["planejada", "em andamento", "concluída", "cancelada"];
+
+function pillTurma(status) {
+  const cls = { "planejada": "info", "em andamento": "ok", "concluída": "info", "cancelada": "bad" }[status] || "info";
+  return `<span class="pill ${cls}">${U.esc(status)}</span>`;
+}
+
+Views.turmas = () => {
+  const turmas = [...Store.col("turmas")].sort((a, b) => (b.dataInicio || "").localeCompare(a.dataInicio || ""));
+  const linhas = turmas.map(t => {
+    const c = Store.get("cursos", t.cursoId);
+    const p = Store.get("professores", t.professorId);
+    const qtd = Store.matriculasDaTurma(t.id).length;
+    const media = Store.presencaMediaTurma(t.id);
+    return `
+      <tr>
+        <td><span class="chip cor-${c ? c.corIndex : 8}">${U.esc(c ? c.nome : "—")}</span></td>
+        <td>${U.esc(t.nome)}</td>
+        <td>${U.esc(p ? p.nome : "—")}</td>
+        <td>${U.fmtData(t.dataInicio)} – ${U.fmtData(t.dataFim)}</td>
+        <td>${U.esc(t.horario || "—")}</td>
+        <td>${qtd}${t.vagas ? " / " + t.vagas : ""}</td>
+        <td>${media !== null ? media + "%" : "—"}</td>
+        <td>${pillTurma(t.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn sm ghost" data-action="irChamada" data-id="${t.id}">Chamada</button>
+          <button class="icon-btn" data-action="editarTurma" data-id="${t.id}" title="Editar" aria-label="Editar turma">&#9998;</button>
+          <button class="icon-btn" data-action="excluirTurma" data-id="${t.id}" title="Excluir" aria-label="Excluir turma">&#128465;</button>
+        </td>
+      </tr>`;
+  }).join("");
+
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Turmas</h2>
+        <p>Cada turma é uma edição de um curso, com professor, período, horário e vagas.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn accent" data-action="novaTurma">+ Nova turma</button>
+      </div>
+    </div>
+    <div class="panel">
+      ${turmas.length ? `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Curso</th><th>Turma</th><th>Professor</th><th>Período</th>
+            <th>Horário</th><th>Alunos</th><th>Presença</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>` : `<div class="empty-note">Nenhuma turma cadastrada ainda.<br>Cadastre um curso e depois crie a primeira turma dele.</div>`}
+    </div>
+  `;
+};
+
+function abrirFormTurma(t) {
+  const cursosOpts = U.ordenarPorNome(Store.col("cursos")).map(c =>
+    `<option value="${c.id}" ${t.cursoId === c.id ? "selected" : ""}>${U.esc(c.nome)}</option>`).join("");
+  const profOpts = ['<option value="">— sem professor —</option>']
+    .concat(U.ordenarPorNome(Store.col("professores")).map(p =>
+      `<option value="${p.id}" ${t.professorId === p.id ? "selected" : ""}>${U.esc(p.nome)}</option>`)).join("");
+  const statusOpts = STATUS_TURMA.map(s =>
+    `<option value="${s}" ${t.status === s ? "selected" : ""}>${s}</option>`).join("");
+
+  if (!Store.col("cursos").length) {
+    U.toast("Cadastre um curso antes de criar turmas.");
+    return;
+  }
+
+  App.abrirModal(t.id ? "Editar turma" : "Nova turma", `
+    <form>
+      <div class="form-grid">
+        <div class="field">
+          <label for="ft-curso">Curso *</label>
+          <select id="ft-curso" name="cursoId" required>${cursosOpts}</select>
+        </div>
+        <div class="field">
+          <label for="ft-nome">Nome da turma *</label>
+          <input id="ft-nome" name="nome" required placeholder="ex.: Turma A" value="${U.esc(t.nome)}">
+        </div>
+        <div class="field">
+          <label for="ft-prof">Professor</label>
+          <select id="ft-prof" name="professorId">${profOpts}</select>
+        </div>
+        <div class="field">
+          <label for="ft-status">Status</label>
+          <select id="ft-status" name="status">${statusOpts}</select>
+        </div>
+        <div class="field">
+          <label for="ft-ini">Data de início</label>
+          <input id="ft-ini" name="dataInicio" type="date" value="${U.esc(t.dataInicio)}">
+        </div>
+        <div class="field">
+          <label for="ft-fim">Data de término</label>
+          <input id="ft-fim" name="dataFim" type="date" value="${U.esc(t.dataFim)}">
+        </div>
+        <div class="field">
+          <label for="ft-hor">Dias e horário</label>
+          <input id="ft-hor" name="horario" placeholder="ex.: Ter e Qui, 19h–21h" value="${U.esc(t.horario)}">
+        </div>
+        <div class="field">
+          <label for="ft-local">Local / sala</label>
+          <input id="ft-local" name="local" value="${U.esc(t.local)}">
+        </div>
+        <div class="field">
+          <label for="ft-vagas">Vagas</label>
+          <input id="ft-vagas" name="vagas" type="number" min="0" value="${U.esc(t.vagas)}">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+        <button type="submit" class="btn accent">Salvar turma</button>
+      </div>
+    </form>`, dados => {
+    if (!dados.nome.trim() || !dados.cursoId) return false;
+    Store.upsert("turmas", {
+      id: t.id || undefined, ...dados,
+      nome: dados.nome.trim(),
+      vagas: Number(dados.vagas) || 0
+    });
+    U.toast("Turma salva.");
+    App.render();
+  });
+}
+
+Actions.novaTurma = () => abrirFormTurma({ cursoId: "", professorId: "", nome: "", dataInicio: "", dataFim: "", horario: "", local: "", vagas: "", status: "planejada" });
+Actions.editarTurma = id => abrirFormTurma(Store.get("turmas", id));
+Actions.excluirTurma = id => {
+  const t = Store.get("turmas", id);
+  const c = Store.get("cursos", t.cursoId);
+  if (confirm(`Excluir a turma "${t.nome}" de ${c ? c.nome : "curso removido"}?\nMatrículas e chamadas dela também serão removidas.`)) {
+    Store.remover("turmas", id);
+    U.toast("Turma excluída.");
+    App.render();
+  }
+};
+Actions.irChamada = id => { location.hash = "#/chamada/" + id; };
