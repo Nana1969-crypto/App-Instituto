@@ -469,3 +469,36 @@ footer.foot svg { width: 18px; height: 18px; color: var(--navy); }
   .menu-btn { display: block; }
   .view { padding: 20px 16px 48px; }
 }
+
+/* ---------- impressão / PDF ----------
+   Sai sempre em tema claro (fundo branco, texto escuro), mesmo que a tela
+   esteja no modo escuro — ideal para imprimir em preto e branco. */
+@media print {
+  :root, :root[data-theme="dark"], :root[data-theme="light"] {
+    --navy: #041E52; --navy-strong: #0A2B6B; --navy-tint: #E8EDF7;
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #EFEDE7;
+    --text: #17233F; --text-muted: #4A5266; --border: #C9C7BD;
+    --on-navy: #17233F; --on-navy-muted: #4A5266;
+    --accent: #B45309; --accent-soft: #FBE8D8;
+    --good: #1F7A45; --good-soft: #DDF0E3; --warn: #9A4E14; --warn-soft: #F9E7D3;
+    --danger: #99312A; --danger-soft: #F7DFDC;
+    --p1: #B45309; --p1-soft: #FBE8D8; --p2: #0F6E62; --p2-soft: #D8F0EC;
+    --p3: #B02A63; --p3-soft: #F9DFEA; --p4: #33548F; --p4-soft: #E2E8F9;
+    --p5: #6E3F94; --p5-soft: #EDE2F6; --p6: #1F7A45; --p6-soft: #DDF0E3;
+    --p7: #9A4E14; --p7-soft: #F9E7D3; --p8: #465A66; --p8-soft: #E1E9ED;
+    --shadow: none;
+  }
+  body { background: #fff; }
+  /* elementos que não fazem sentido no papel */
+  .topbar, .menu-btn, .toast, .modal-backdrop,
+  .head-actions, .e-actions, .form-actions,
+  .presenca-toggle, .search-input { display: none !important; }
+  .view { max-width: 100%; padding: 0; gap: 14px; }
+  .panel, .stat-card, .entity-card {
+    box-shadow: none; border: 1px solid var(--border);
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .page-head h2 { color: var(--navy); }
+  a { text-decoration: none; color: inherit; }
+  @page { margin: 1.4cm; }
+}
