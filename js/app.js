@@ -14,7 +14,8 @@ const App = (() => {
     relatorios: () => Views.relatorios(),
     atendimentos: sub => Views.atendimentos(sub),
     paciente: id => Views.pacienteDetalhe(id),
-    professor: () => Views.professorArea()
+    professor: () => Views.professorArea(),
+    agenda: () => Views.agenda()
   };
 
   function render() {

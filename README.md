@@ -15,6 +15,13 @@ no próprio navegador (localStorage) de quem usa.
   Gestão Financeira para Empreendedores, Social Media, Educação Financeira,
   Maquiagem Profissional) e é possível criar novos, com ementa, módulos e carga horária.
 - **Turmas**: edições de cada curso, com professor, período, horário, local, vagas e status.
+- **Agenda**: calendário geral do instituto — datas de cursos, workshops, palestras,
+  eventos e reuniões, cada um com sala/local (Salas 1 a 5, Auditório, Hall Superior e
+  Hall de Entrada, com possibilidade de adicionar novas). Seletor de ano a partir de
+  2025 — os próximos anos aparecem automaticamente. Aviso de conflito quando a mesma
+  sala é reservada duas vezes no mesmo horário, resumo do uso das salas no ano e
+  exportação da agenda em planilha.
+- Cada curso tem uma **modalidade**: Curso, Workshop ou Palestra.
 - **Alunos**: cadastro geral em ordem alfabética com busca — nome completo, nascimento,
   CPF, telefone, e-mail, endereço completo, responsável, encaminhamento, impacto das
   enchentes e situação social. A ficha de cada aluno mostra a trajetória: **quais cursos

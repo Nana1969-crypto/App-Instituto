@@ -9,7 +9,10 @@ const Store = (() => {
 
   const vazio = () => ({
     cursos: [],       // {id, nome, ementa, corIndex, status, modulos:[{nome, descricao, horas}],
+                      //  modalidade: curso|workshop|palestra,
                       //  tipoCurso: gratuito|pago, valor, cobranca: mensal|unico}
+    eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
+                      //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
     professores: [],  // {id, nome, telefone, email, formacao, experiencia}
     turmas: [],       // {id, cursoId, professorId, nome, dataInicio, dataFim, horario, local, vagas, status}
     alunos: [],       // {id, nome, nascimento, cpf, telefone, email, endereco, bairro, cidade, cep,
@@ -34,7 +37,8 @@ const Store = (() => {
     config: {
       presencaMinima: 75,
       encaminhamentos: ["Demanda espontânea", "CRAS", "Escolas"],
-      especialidades: ["Psicologia", "Psiquiatria", "Neuropsicopedagogia"]
+      especialidades: ["Psicologia", "Psiquiatria", "Neuropsicopedagogia"],
+      salas: ["Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Auditório", "Hall Superior", "Hall de Entrada"]
     }
   });
 
@@ -63,6 +67,53 @@ const Store = (() => {
     if (!Array.isArray(db.pacientes)) db.pacientes = [];
     if (!Array.isArray(db.profsaude)) db.profsaude = [];
     if (!Array.isArray(db.atendimentos)) db.atendimentos = [];
+    if (!Array.isArray(db.eventos)) db.eventos = [];
+    if (!Array.isArray(db.config.salas) || !db.config.salas.length) {
+      db.config.salas = ["Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Auditório", "Hall Superior", "Hall de Entrada"];
+    }
+  }
+
+  function addSala(nome) {
+    const n = String(nome || "").trim();
+    if (!n) return false;
+    if (!db.config.salas.some(x => x.toLowerCase() === n.toLowerCase())) {
+      db.config.salas.push(n);
+      salvar();
+    }
+    return n;
+  }
+
+  /* anos disponíveis na agenda: de 2025 até o maior ano com evento (ou o atual) + 1,
+     assim os próximos anos vão surgindo automaticamente */
+  function anosAgenda() {
+    const atual = new Date().getFullYear();
+    let max = atual;
+    for (const e of db.eventos) {
+      const a = Number((e.data || "").slice(0, 4));
+      if (a > max) max = a;
+    }
+    const anos = [];
+    for (let a = 2025; a <= max + 1; a++) anos.push(a);
+    return anos;
+  }
+
+  /* eventos de um ano, ordenados por data/hora */
+  function eventosDoAno(ano) {
+    return db.eventos
+      .filter(e => (e.data || "").startsWith(String(ano)))
+      .sort((x, y) => (x.data + (x.horaInicio || "")).localeCompare(y.data + (y.horaInicio || "")));
+  }
+
+  /* conflito de sala: mesmo local, mesma data e horários sobrepostos */
+  function conflitoSala(evento) {
+    if (!evento.sala || !evento.data) return null;
+    for (const e of db.eventos) {
+      if (e.id === evento.id || e.sala !== evento.sala || e.data !== evento.data) continue;
+      const ini1 = evento.horaInicio || "00:00", fim1 = evento.horaFim || "23:59";
+      const ini2 = e.horaInicio || "00:00", fim2 = e.horaFim || "23:59";
+      if (ini1 < fim2 && ini2 < fim1) return e;
+    }
+    return null;
   }
 
   function addEspecialidade(nome) {
@@ -102,7 +153,7 @@ const Store = (() => {
     ];
     db.cursos = nomes.map(([nome, corIndex]) => ({
       id: U.uid(), nome, ementa: "", corIndex, status: "ativo", modulos: [],
-      tipoCurso: "gratuito", valor: 0, cobranca: ""
+      modalidade: "curso", tipoCurso: "gratuito", valor: 0, cobranca: ""
     }));
     salvar();
   }
@@ -664,6 +715,16 @@ const Store = (() => {
     at(12, "11:00", pacs[5], profSaude[2], "Neuropsicopedagogia", "primeira", "individual", "presencial", "cancelado");
     at(19, "11:00", pacs[5], profSaude[2], "Neuropsicopedagogia", "primeira", "individual", "presencial", "realizado");
 
+    /* --- agenda de eventos e salas --- */
+    [
+      { titulo: "Aula — Social Media, Turma B", tipo: "curso", data: "2026-07-07", horaInicio: "19:00", horaFim: "21:00", sala: "Sala 2", turmaId: turmas[0].id, responsavel: "Juliana Lopes", obs: "" },
+      { titulo: "Workshop de Fotografia com Celular", tipo: "workshop", data: "2026-07-18", horaInicio: "09:00", horaFim: "12:00", sala: "Sala 3", turmaId: "", responsavel: "Juliana Lopes", obs: "Inscrições abertas" },
+      { titulo: "Palestra: Saúde Financeira da Família", tipo: "palestra", data: "2026-08-05", horaInicio: "19:00", horaFim: "20:30", sala: "Auditório", turmaId: "", responsavel: "Fernanda Tavares", obs: "Aberta à comunidade" },
+      { titulo: "Feira de Empreendedoras da Zona Norte", tipo: "evento", data: "2026-09-12", horaInicio: "10:00", horaFim: "17:00", sala: "Hall de Entrada", turmaId: "", responsavel: "", obs: "Expositoras: alunas dos cursos" },
+      { titulo: "Reunião de planejamento pedagógico", tipo: "reuniao", data: "2026-07-10", horaInicio: "14:00", horaFim: "16:00", sala: "Sala 1", turmaId: "", responsavel: "Coordenação", obs: "" },
+      { titulo: "Palestra de encerramento do ano", tipo: "palestra", data: "2025-12-10", horaInicio: "19:00", horaFim: "21:00", sala: "Auditório", turmaId: "", responsavel: "Coordenação", obs: "Registro do ano anterior" }
+    ].forEach(e => upsert("eventos", e));
+
     salvar();
   }
 
@@ -681,7 +742,8 @@ const Store = (() => {
     presencaAluno, presencaMediaTurma, presencaMediaGeral, alunosEmRisco,
     alunosPorCurso, cruzamento, resumo,
     presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
-    addEncaminhamento, addEspecialidade,
+    addEncaminhamento, addEspecialidade, addSala,
+    anosAgenda, eventosDoAno, conflitoSala,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,
     enchenteGeral, encaminhamentoGeral, resumoGratuidade, condicaoAluno,

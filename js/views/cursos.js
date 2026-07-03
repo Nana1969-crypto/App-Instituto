@@ -14,6 +14,7 @@ Views.cursos = () => {
         <div class="e-head">
           <div>
             <div class="e-title">${U.esc(c.nome)}</div>
+            <span class="chip">${{ workshop: "Workshop", palestra: "Palestra" }[c.modalidade] || "Curso"}</span>
             <span class="chip">${c.status === "ativo" ? "Ativo" : "Inativo"}</span>
             ${c.tipoCurso === "pago"
               ? `<span class="pill info">pago · ${U.moeda(c.valor)}${c.cobranca === "mensal" ? "/mês" : ""}</span>`
@@ -64,6 +65,14 @@ function formCursoHTML(c) {
         <div class="field full">
           <label for="f-ementa">Ementa</label>
           <textarea id="f-ementa" name="ementa">${U.esc(c.ementa)}</textarea>
+        </div>
+        <div class="field">
+          <label for="f-modalidade">Modalidade</label>
+          <select id="f-modalidade" name="modalidade">
+            <option value="curso" ${(c.modalidade || "curso") === "curso" ? "selected" : ""}>Curso</option>
+            <option value="workshop" ${c.modalidade === "workshop" ? "selected" : ""}>Workshop</option>
+            <option value="palestra" ${c.modalidade === "palestra" ? "selected" : ""}>Palestra</option>
+          </select>
         </div>
         <div class="field">
           <label for="f-status">Status</label>
@@ -145,6 +154,7 @@ function abrirFormCurso(c) {
       nome: dados.nome.trim(),
       ementa: dados.ementa.trim(),
       status: dados.status,
+      modalidade: dados.modalidade || "curso",
       corIndex: Number(dados.corIndex) || 1,
       modulos: lerModulos(),
       tipoCurso: dados.tipoCurso,
