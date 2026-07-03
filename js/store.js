@@ -73,6 +73,16 @@ const Store = (() => {
     }
   }
 
+  /* senha geral de entrada (organizacional — os dados seguem no navegador) */
+  function temSenhaGeral() { return !!db.config.senhaGeralHash; }
+  function definirSenhaGeral(senha) {
+    db.config.senhaGeralHash = U.hashPin(String(senha));
+    salvar();
+  }
+  function conferirSenhaGeral(senha) {
+    return U.hashPin(String(senha)) === db.config.senhaGeralHash;
+  }
+
   function addSala(nome) {
     const n = String(nome || "").trim();
     if (!n) return false;
@@ -743,6 +753,7 @@ const Store = (() => {
     alunosPorCurso, cruzamento, resumo,
     presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
     addEncaminhamento, addEspecialidade, addSala,
+    temSenhaGeral, definirSenhaGeral, conferirSenhaGeral,
     anosAgenda, eventosDoAno, conflitoSala,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,

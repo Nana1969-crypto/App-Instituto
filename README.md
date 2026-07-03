@@ -71,6 +71,13 @@ e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botã
 lado do campo). Há também o campo *Atingido pelas enchentes?* para o gráfico social.
 - **Backup**: exportação e importação de todos os dados em arquivo `.json`.
 
+**Senha de entrada**: no primeiro acesso o sistema pede para **criar a senha do
+instituto**; depois, ela é exigida sempre que o navegador é aberto. A tela de
+entrada tem atalhos para as áreas de professor e de profissional de saúde (PIN
+próprio, sem a senha geral). A troca de senha fica em Indicadores → Relatórios →
+Backup. *Proteção organizacional: os dados seguem no navegador; o login forte
+virá na versão 2.*
+
 Na primeira visita, o botão **“Carregar dados de exemplo”** no Painel preenche o
 sistema com dados fictícios para conhecer as telas. Para começar de verdade, use
 **Relatórios → Apagar todos os dados**.

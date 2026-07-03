@@ -103,6 +103,7 @@ Views.relatorios = () => {
         <button class="btn" data-action="backupExportar">Exportar backup (.json)</button>
         <button class="btn ghost" data-action="backupImportar">Importar backup</button>
         <input type="file" id="arquivo-backup" accept=".json,application/json" hidden>
+        <button class="btn ghost" data-action="alterarSenhaGeral">Alterar senha de entrada</button>
         <button class="btn danger" data-action="apagarTudo">Apagar todos os dados</button>
       </div>
     </div>
@@ -212,6 +213,17 @@ Actions.backupImportar = () => {
     leitor.readAsText(arq);
   };
   input.click();
+};
+
+Actions.alterarSenhaGeral = () => {
+  const atual = prompt("Digite a senha ATUAL do sistema:");
+  if (atual === null) return;
+  if (!Store.conferirSenhaGeral(atual)) { alert("Senha atual incorreta."); return; }
+  const nova = prompt("Digite a NOVA senha (mínimo 4 caracteres):");
+  if (nova === null) return;
+  if (nova.length < 4) { alert("A nova senha deve ter pelo menos 4 caracteres."); return; }
+  Store.definirSenhaGeral(nova);
+  U.toast("Senha alterada.");
 };
 
 Actions.apagarTudo = () => {
