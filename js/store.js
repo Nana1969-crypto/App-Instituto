@@ -8,19 +8,22 @@ const Store = (() => {
   const KEY = "bzn-painel-v1";
 
   const vazio = () => ({
-    cursos: [],       // {id, nome, ementa, corIndex, status, modulos:[{nome, descricao, horas}]}
+    cursos: [],       // {id, nome, ementa, corIndex, status, modulos:[{nome, descricao, horas}],
+                      //  tipoCurso: gratuito|pago, valor, cobranca: mensal|unico}
     professores: [],  // {id, nome, telefone, email, formacao, experiencia}
     turmas: [],       // {id, cursoId, professorId, nome, dataInicio, dataFim, horario, local, vagas, status}
     alunos: [],       // {id, nome, nascimento, cpf, telefone, email, endereco, bairro, cidade, cep,
                       //  responsavel, encaminhamento, atingidoEnchente, impactoEnchentes, rendaFamiliar,
                       //  beneficios, moradiaAtual, necessidades, observacoes}
-    matriculas: [],   // {id, alunoId, turmaId, status: cursando|concluido|trancado|desistente, data}
+    matriculas: [],   // {id, alunoId, turmaId, status: cursando|concluido|trancado|desistente, data,
+                      //  bolsa: true|false (bolsista em curso pago)}
     chamadas: [],     // {id, turmaId, data, conteudo, presencas: {alunoId: true|false}}
 
     /* módulo de atendimentos clínicos */
     pacientes: [],    // {id, nome, cpf, rg, nascimento, sexo, endereco, bairro, cidade, telefone,
                       //  whatsapp, email, responsavel, escolaridade, escola, profissao, estadoCivil,
                       //  encaminhadoPor, situacaoSocio, beneficios, observacoes,
+                      //  atingidoEnchente: sim|nao|"", impactoEnchentes,
                       //  tipoAtendimento: gratuito|pago, cobranca: mensal|consulta, valor}
     profsaude: [],    // {id, nome, especialidade, crp, crm, registro, dias, horarios, telefone, email}
     atendimentos: [], // {id, data, hora, pacienteId, profissionalId, especialidade,
@@ -98,7 +101,8 @@ const Store = (() => {
       ["Maquiagem Profissional", 5]
     ];
     db.cursos = nomes.map(([nome, corIndex]) => ({
-      id: U.uid(), nome, ementa: "", corIndex, status: "ativo", modulos: []
+      id: U.uid(), nome, ementa: "", corIndex, status: "ativo", modulos: [],
+      tipoCurso: "gratuito", valor: 0, cobranca: ""
     }));
     salvar();
   }
@@ -307,16 +311,101 @@ const Store = (() => {
     return out;
   }
 
-  /* alunos atingidos pelas enchentes */
-  function porImpactoEnchente() {
+  /* atingidos pelas enchentes numa lista de pessoas (alunos ou pacientes) */
+  function contarEnchente(lista) {
     let sim = 0, nao = 0, semInfo = 0;
-    for (const a of db.alunos) {
+    for (const a of lista) {
       const v = a.atingidoEnchente || (a.impactoEnchentes && a.impactoEnchentes.trim() ? "sim" : "");
       if (v === "sim") sim++;
       else if (v === "nao") nao++;
       else semInfo++;
     }
-    return { sim, nao, semInfo, total: db.alunos.length };
+    return { sim, nao, semInfo, total: lista.length };
+  }
+
+  /* alunos atingidos pelas enchentes */
+  function porImpactoEnchente() {
+    return contarEnchente(db.alunos);
+  }
+
+  /* ---------- visão geral do instituto (todas as áreas) ---------- */
+
+  /* enchente somando alunos dos cursos + pacientes dos atendimentos */
+  function enchenteGeral() {
+    const alunos = contarEnchente(db.alunos);
+    const pacientes = contarEnchente(db.pacientes);
+    return {
+      alunos, pacientes,
+      sim: alunos.sim + pacientes.sim,
+      nao: alunos.nao + pacientes.nao,
+      semInfo: alunos.semInfo + pacientes.semInfo,
+      total: alunos.total + pacientes.total
+    };
+  }
+
+  /* encaminhamentos somando as duas áreas */
+  function encaminhamentoGeral() {
+    const cont = new Map();
+    db.config.encaminhamentos.forEach(o => cont.set(o, 0));
+    let semInfo = 0;
+    const registrar = e => {
+      const v = (e || "").trim();
+      if (!v) { semInfo++; return; }
+      cont.set(v, (cont.get(v) || 0) + 1);
+    };
+    db.alunos.forEach(a => registrar(a.encaminhamento));
+    db.pacientes.forEach(p => registrar(p.encaminhadoPor));
+    const out = [...cont.entries()].map(([nome, qtd]) => ({ nome, qtd })).filter(x => x.qtd > 0);
+    out.sort((a, b) => b.qtd - a.qtd);
+    if (semInfo) out.push({ nome: "Não informado", qtd: semInfo, semInfo: true });
+    return out;
+  }
+
+  /* condição do aluno nos cursos: gratuito, bolsista ou pagante.
+     - pagante: tem matrícula em curso pago SEM bolsa
+     - bolsista: só cursa pago(s) com bolsa (ou pago com bolsa + gratuitos)
+     - gratuito: só cursos gratuitos (ou sem matrículas) */
+  function condicaoAluno(alunoId) {
+    let temPagoSemBolsa = false, temBolsa = false;
+    for (const m of matriculasDoAluno(alunoId)) {
+      const c = cursoDaTurma(m.turmaId);
+      if (c && c.tipoCurso === "pago") {
+        if (m.bolsa) temBolsa = true;
+        else temPagoSemBolsa = true;
+      }
+    }
+    if (temPagoSemBolsa) return "pagante";
+    if (temBolsa) return "bolsista";
+    return "gratuito";
+  }
+
+  /* gratuidade em todas as áreas: cursos (gratuitos, bolsistas, pagantes)
+     + atendimentos (pacientes gratuitos × pagos) */
+  function resumoGratuidade() {
+    const cond = { gratuito: [], bolsista: [], pagante: [] };
+    db.alunos.forEach(a => cond[condicaoAluno(a.id)].push(a));
+
+    const pacGratuitos = db.pacientes.filter(p => p.tipoAtendimento !== "pago");
+    const pacPagos = db.pacientes.length - pacGratuitos.length;
+    const idsGratuitos = new Set(pacGratuitos.map(p => p.id));
+    const atGratuitos = db.atendimentos.filter(a => idsGratuitos.has(a.pacienteId));
+
+    const cursosGratuitos = db.cursos.filter(c => c.tipoCurso !== "pago").length;
+    const cursosPagos = db.cursos.length - cursosGratuitos;
+
+    return {
+      alunosGratuitos: cond.gratuito.length,
+      alunosBolsistas: cond.bolsista.length,
+      alunosPagantes: cond.pagante.length,
+      cursosGratuitos, cursosPagos,
+      pacGratuitos: pacGratuitos.length,
+      pacPagos,
+      /* pessoas atendidas sem custo: alunos gratuitos + bolsistas + pacientes gratuitos */
+      pessoasGratuitas: cond.gratuito.length + cond.bolsista.length + pacGratuitos.length,
+      atendimentosGratuitos: atGratuitos.length,
+      atGratuitosPorEspecialidade: contarPor(atGratuitos, "especialidade"),
+      enchenteGratuitos: contarEnchente([...cond.gratuito, ...cond.bolsista, ...pacGratuitos])
+    };
   }
 
   /* ---------- consultas do módulo de atendimentos ---------- */
@@ -430,10 +519,11 @@ const Store = (() => {
 
   /* ---------- dados de demonstração ---------- */
   function carregarDemo() {
+    const pinProfDemo = U.hashPin("1234"); // PIN dos professores de exemplo: 1234
     const profs = [
-      { nome: "Carlos Mendes", telefone: "(51) 99911-2233", email: "carlos@exemplo.com", formacao: "Administração", experiencia: "15 anos como consultor de negócios; ex-gestor do Sebrae regional." },
-      { nome: "Fernanda Tavares", telefone: "(51) 99822-3344", email: "fernanda@exemplo.com", formacao: "Ciências Contábeis", experiencia: "Contadora, 9 anos de experiência com microempreendedores." },
-      { nome: "Juliana Lopes", telefone: "(51) 99733-4455", email: "juliana@exemplo.com", formacao: "Publicidade e Propaganda", experiencia: "Estrategista digital, agência própria há 6 anos." }
+      { nome: "Carlos Mendes", telefone: "(51) 99911-2233", email: "carlos@exemplo.com", formacao: "Administração", experiencia: "15 anos como consultor de negócios; ex-gestor do Sebrae regional.", pinHash: pinProfDemo },
+      { nome: "Fernanda Tavares", telefone: "(51) 99822-3344", email: "fernanda@exemplo.com", formacao: "Ciências Contábeis", experiencia: "Contadora, 9 anos de experiência com microempreendedores.", pinHash: pinProfDemo },
+      { nome: "Juliana Lopes", telefone: "(51) 99733-4455", email: "juliana@exemplo.com", formacao: "Publicidade e Propaganda", experiencia: "Estrategista digital, agência própria há 6 anos.", pinHash: pinProfDemo }
     ].map(p => upsert("professores", p));
 
     const nomesAlunos = [
@@ -455,6 +545,8 @@ const Store = (() => {
     }));
 
     const cursos = db.cursos;
+    // exemplo de curso pago com bolsas: Maquiagem Profissional
+    cursos[4].tipoCurso = "pago"; cursos[4].valor = 150; cursos[4].cobranca = "unico";
     const turmas = [
       { cursoId: cursos[2].id, professorId: profs[2].id, nome: "Turma B", dataInicio: "2026-05-04", dataFim: "2026-08-28", horario: "Ter e Qui, 19h–21h", local: "Sala 2", vagas: 25, status: "em andamento" },
       { cursoId: cursos[0].id, professorId: profs[0].id, nome: "Turma A", dataInicio: "2026-04-06", dataFim: "2026-07-30", horario: "Seg e Qua, 19h–21h", local: "Sala 1", vagas: 30, status: "em andamento" },
@@ -462,10 +554,11 @@ const Store = (() => {
       { cursoId: cursos[4].id, professorId: profs[2].id, nome: "Turma 1", dataInicio: "2026-03-02", dataFim: "2026-05-29", horario: "Sex, 14h–17h", local: "Sala 3", vagas: 20, status: "concluída" }
     ].map(t => upsert("turmas", t));
 
-    const mat = (aluno, turma, status) => upsert("matriculas", { alunoId: aluno.id, turmaId: turma.id, status, data: turma.dataInicio });
+    const mat = (aluno, turma, status, bolsa) => upsert("matriculas", { alunoId: aluno.id, turmaId: turma.id, status, data: turma.dataInicio, bolsa: !!bolsa });
 
     // trajetórias: alguns alunos fazem vários cursos
-    mat(alunos[0], turmas[2], "concluido"); mat(alunos[0], turmas[3], "concluido"); mat(alunos[0], turmas[0], "cursando");
+    // turmas[3] é do curso pago (Maquiagem): Maria é bolsista, Ana é pagante
+    mat(alunos[0], turmas[2], "concluido"); mat(alunos[0], turmas[3], "concluido", true); mat(alunos[0], turmas[0], "cursando");
     mat(alunos[1], turmas[1], "cursando"); mat(alunos[1], turmas[2], "concluido");
     mat(alunos[2], turmas[0], "cursando"); mat(alunos[2], turmas[3], "concluido");
     [3, 4, 5, 6, 7].forEach(i => mat(alunos[i], turmas[0], "cursando"));
@@ -515,6 +608,8 @@ const Store = (() => {
       estadoCivil: i < 2 ? "Casado(a)" : "Solteiro(a)",
       encaminhadoPor: ["CRAS", "Escolas", "Demanda espontânea"][i % 3],
       situacaoSocio: i % 2 === 0 ? "Baixa renda" : "", beneficios: i % 3 === 0 ? "Bolsa Família" : "",
+      atingidoEnchente: i % 3 === 0 ? "sim" : (i % 3 === 1 ? "nao" : ""),
+      impactoEnchentes: i % 3 === 0 ? "Família desalojada na enchente de 2024." : "",
       observacoes: "", tipoAtendimento: tipo, cobranca, valor
     }));
 
@@ -571,6 +666,7 @@ const Store = (() => {
     addEncaminhamento, addEspecialidade,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro,
+    enchenteGeral, encaminhamentoGeral, resumoGratuidade, condicaoAluno,
     exportarJSON, importarJSON, carregarDemo, limparTudo,
     get config() { return db.config; }
   };

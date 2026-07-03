@@ -13,7 +13,8 @@ const App = (() => {
     graficos: () => Views.graficos(),
     relatorios: () => Views.relatorios(),
     atendimentos: sub => Views.atendimentos(sub),
-    paciente: id => Views.pacienteDetalhe(id)
+    paciente: id => Views.pacienteDetalhe(id),
+    professor: () => Views.professorArea()
   };
 
   function render() {
@@ -26,7 +27,8 @@ const App = (() => {
       a.classList.toggle("active",
         r === rota ||
         (rota === "aluno" && r === "alunos") ||
-        (rota === "paciente" && r === "atendimentos"));
+        (rota === "paciente" && r === "atendimentos") ||
+        (rota === "professor" && r === "professores"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
 

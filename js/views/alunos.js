@@ -81,9 +81,11 @@ Views.alunoDetalhe = id => {
     const c = t ? Store.get("cursos", t.cursoId) : null;
     const p = t ? Store.presencaAluno(t.id, a.id) : { pct: null };
     const pillCls = { cursando: "ok", concluido: "info", trancado: "warn", desistente: "bad" }[m.status] || "info";
+    const ehPago = c && c.tipoCurso === "pago";
     return `
       <tr>
-        <td><span class="chip cor-${c ? c.corIndex : 8}">${U.esc(c ? c.nome : "curso removido")}</span></td>
+        <td><span class="chip cor-${c ? c.corIndex : 8}">${U.esc(c ? c.nome : "curso removido")}</span>
+          ${ehPago ? (m.bolsa ? `<span class="pill ok">bolsista</span>` : `<span class="pill info">pagante</span>`) : ""}</td>
         <td>${U.esc(t ? t.nome : "—")}</td>
         <td>${t ? U.fmtData(t.dataInicio) + " – " + U.fmtData(t.dataFim) : "—"}</td>
         <td>${p.pct !== null ? p.pct + "%" : "—"}</td>
@@ -313,7 +315,8 @@ Actions.matricular = alunoId => {
   const opts = turmas.map(t => {
     const c = Store.get("cursos", t.cursoId);
     const marcado = jaMatriculado.has(t.id) ? " (já matriculado)" : "";
-    return `<option value="${t.id}" ${jaMatriculado.has(t.id) ? "disabled" : ""}>${U.esc((c ? c.nome : "?") + " — " + t.nome + marcado)}</option>`;
+    const pago = c && c.tipoCurso === "pago" ? " — PAGO" : "";
+    return `<option value="${t.id}" data-pago="${c && c.tipoCurso === "pago" ? "1" : ""}" ${jaMatriculado.has(t.id) ? "disabled" : ""}>${U.esc((c ? c.nome : "?") + " — " + t.nome + pago + marcado)}</option>`;
   }).join("");
 
   App.abrirModal("Matricular em turma", `
@@ -336,6 +339,11 @@ Actions.matricular = alunoId => {
           <label for="fm-data">Data da matrícula</label>
           <input id="fm-data" name="data" type="date" value="${U.hojeISO()}">
         </div>
+        <div class="field full" id="fm-bolsa-area" hidden>
+          <label style="display:inline-flex; align-items:center; gap:8px; text-transform:none; font-size:0.86rem;">
+            <input type="checkbox" name="bolsa" value="1"> Aluno bolsista (isento de pagamento neste curso)
+          </label>
+        </div>
       </div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
@@ -343,10 +351,20 @@ Actions.matricular = alunoId => {
       </div>
     </form>`, dados => {
     if (!dados.turmaId) return false;
-    Store.upsert("matriculas", { alunoId, turmaId: dados.turmaId, status: dados.status, data: dados.data });
+    Store.upsert("matriculas", { alunoId, turmaId: dados.turmaId, status: dados.status, data: dados.data, bolsa: !!dados.bolsa });
     U.toast("Matrícula registrada.");
     App.render();
   });
+
+  /* mostra a opção de bolsa apenas quando a turma escolhida é de curso pago */
+  const selTurma = document.getElementById("fm-turma");
+  const bolsaArea = document.getElementById("fm-bolsa-area");
+  const atualizarBolsa = () => {
+    bolsaArea.hidden = !selTurma.selectedOptions[0]?.dataset.pago;
+    if (bolsaArea.hidden) bolsaArea.querySelector("input").checked = false;
+  };
+  selTurma.addEventListener("change", atualizarBolsa);
+  atualizarBolsa();
 };
 
 Actions.editarMatricula = matId => {
@@ -354,11 +372,13 @@ Actions.editarMatricula = matId => {
   if (!m) return;
   const t = Store.get("turmas", m.turmaId);
   const c = t ? Store.get("cursos", t.cursoId) : null;
+  const ehPago = c && c.tipoCurso === "pago";
   App.abrirModal("Alterar matrícula", `
     <form>
       <p style="margin:0 0 14px; font-size:0.88rem;">
         <span class="chip cor-${c ? c.corIndex : 8}">${U.esc(c ? c.nome : "curso removido")}</span>
         &nbsp;${U.esc(t ? t.nome : "")}
+        ${ehPago ? `&nbsp;<span class="pill info">curso pago · ${U.moeda(c.valor)}${c.cobranca === "mensal" ? "/mês" : ""}</span>` : ""}
       </p>
       <div class="form-grid">
         <div class="field full">
@@ -368,6 +388,12 @@ Actions.editarMatricula = matId => {
               `<option value="${s}" ${m.status === s ? "selected" : ""}>${s}</option>`).join("")}
           </select>
         </div>
+        ${ehPago ? `
+        <div class="field full">
+          <label style="display:inline-flex; align-items:center; gap:8px; text-transform:none; font-size:0.86rem;">
+            <input type="checkbox" name="bolsa" value="1" ${m.bolsa ? "checked" : ""}> Aluno bolsista (isento de pagamento neste curso)
+          </label>
+        </div>` : ""}
       </div>
       <div class="form-actions">
         <button type="button" class="btn danger" data-modal-action="removerMatricula" data-id="${m.id}">Remover matrícula</button>
@@ -375,7 +401,7 @@ Actions.editarMatricula = matId => {
         <button type="submit" class="btn accent">Salvar</button>
       </div>
     </form>`, dados => {
-    Store.upsert("matriculas", { ...m, status: dados.status });
+    Store.upsert("matriculas", { ...m, status: dados.status, bolsa: ehPago ? !!dados.bolsa : false });
     U.toast("Matrícula atualizada.");
     App.render();
   });

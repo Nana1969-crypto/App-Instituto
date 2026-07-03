@@ -112,12 +112,16 @@ Actions.imprimir = () => window.print();
 
 Actions.csvAlunos = () => {
   const cab = ["Nome", "Nascimento", "CPF", "Telefone", "E-mail", "Endereço", "Bairro", "Cidade", "CEP",
-    "Responsável", "Encaminhamento", "Impacto das enchentes", "Renda familiar", "Benefícios",
-    "Moradia atual", "Necessidades", "Observações", "Cursos que fez"];
+    "Responsável", "Encaminhamento", "Atingido pelas enchentes", "Impacto das enchentes", "Renda familiar", "Benefícios",
+    "Moradia atual", "Necessidades", "Condição", "Observações", "Cursos que fez"];
   const linhas = U.ordenarPorNome(Store.col("alunos")).map(a => U.linhaCSV([
     a.nome, U.fmtData(a.nascimento), a.cpf, a.telefone, a.email, a.endereco, a.bairro, a.cidade, a.cep,
-    a.responsavel, a.encaminhamento, a.impactoEnchentes, a.rendaFamiliar, a.beneficios,
-    a.moradiaAtual, a.necessidades, a.observacoes,
+    a.responsavel, a.encaminhamento,
+    a.atingidoEnchente === "sim" ? "Sim" : a.atingidoEnchente === "nao" ? "Não" : "",
+    a.impactoEnchentes, a.rendaFamiliar, a.beneficios,
+    a.moradiaAtual, a.necessidades,
+    { gratuito: "Gratuito", bolsista: "Bolsista", pagante: "Pagante" }[Store.condicaoAluno(a.id)],
+    a.observacoes,
     Store.cursosDoAluno(a.id).map(x => x.curso.nome).join(" + ")
   ]));
   U.baixarArquivo("alunos-instituto-bzn.csv", "﻿" + [U.linhaCSV(cab), ...linhas].join("\n"), "text/csv;charset=utf-8");

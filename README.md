@@ -22,9 +22,12 @@ no próprio navegador (localStorage) de quem usa.
 - **Professores**: nome, contato, formação e experiência profissional.
 - **Chamada**: presença/falta por turma e data, com histórico editável e frequência
   individual calculada automaticamente.
-- **Gráficos**: relatórios visuais (pizzas/roscas, barras e linha do tempo) — alunos
-  por curso, situação das matrículas, presença média por turma, alunos por professor,
-  evolução da frequência aula a aula, impacto das enchentes e origem dos encaminhamentos.
+- **Gráficos**: relatórios visuais (pizzas/roscas, barras e linha do tempo) em três
+  seções — **Visão geral do instituto** (todas as áreas: pessoas por área, impacto
+  das enchentes geral somando alunos + pacientes, encaminhamentos gerais),
+  **Gratuidade** (pessoas atendidas sem custo, bolsistas, alunos e pacientes por
+  condição, atendimentos gratuitos por especialidade) e **Cursos** (alunos por curso,
+  situação das matrículas, presença por turma, evolução da frequência).
 - **Relatórios**: presença por turma (com alerta abaixo de 75%), alunos multi-curso,
   combinações de cursos mais comuns, exportação em CSV (Excel) e impressão/PDF.
 - **Atendimentos (módulo clínico)**: agenda de Psicologia, Psiquiatria e
@@ -45,6 +48,16 @@ no próprio navegador (localStorage) de quem usa.
   não armazena. *Atenção: é uma restrição organizacional; como os dados ficam no
   navegador, a proteção forte com login real virá na versão 2 (com servidor).*
   Nos dados de exemplo, o PIN dos três profissionais é `1234`.
+- **Área do professor (cursos)**: mesmo esquema de PIN para os professores dos
+  cursos (botão "Área do professor" na aba Professores): cada um vê apenas as
+  próprias turmas, alunos (contato e frequência, sem dados sociais), alunos em
+  risco e atalho para fazer a chamada. PIN de exemplo: `1234`.
+- **Cursos gratuitos ou pagos, com bolsas**: cada curso pode ser marcado como
+  gratuito ou pago (valor único ou mensal). Em cursos pagos, a matrícula tem a
+  opção **bolsista** (isento). Os gráficos de gratuidade consideram alunos
+  gratuitos + bolsistas + pacientes gratuitos.
+- O cadastro de pacientes também pergunta **"Atingido pelas enchentes?"**, igual
+  ao de alunos — os dois alimentam o gráfico geral de impacto das enchentes.
 
 O campo **Encaminhamento** dos alunos já vem com as origens *Demanda espontânea, CRAS
 e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botão "+" ao

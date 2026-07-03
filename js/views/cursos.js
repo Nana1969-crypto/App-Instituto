@@ -15,6 +15,9 @@ Views.cursos = () => {
           <div>
             <div class="e-title">${U.esc(c.nome)}</div>
             <span class="chip">${c.status === "ativo" ? "Ativo" : "Inativo"}</span>
+            ${c.tipoCurso === "pago"
+              ? `<span class="pill info">pago · ${U.moeda(c.valor)}${c.cobranca === "mensal" ? "/mês" : ""}</span>`
+              : `<span class="pill ok">gratuito</span>`}
           </div>
           <div class="e-actions">
             <button class="icon-btn" data-action="editarCurso" data-id="${c.id}" title="Editar" aria-label="Editar curso">&#9998;</button>
@@ -73,6 +76,28 @@ function formCursoHTML(c) {
           <label for="f-cor">Cor no painel</label>
           <select id="f-cor" name="corIndex">${corOpts}</select>
         </div>
+        <div class="form-section">Financeiro</div>
+        <div class="field">
+          <label for="f-tipo">Tipo de curso</label>
+          <select id="f-tipo" name="tipoCurso">
+            <option value="gratuito" ${c.tipoCurso !== "pago" ? "selected" : ""}>Gratuito</option>
+            <option value="pago" ${c.tipoCurso === "pago" ? "selected" : ""}>Pago</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-cobr">Cobrança</label>
+          <select id="f-cobr" name="cobranca" ${c.tipoCurso !== "pago" ? "disabled" : ""}>
+            <option value="unico" ${c.cobranca !== "mensal" ? "selected" : ""}>Valor único</option>
+            <option value="mensal" ${c.cobranca === "mensal" ? "selected" : ""}>Mensal</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-valor">Valor (R$)</label>
+          <input id="f-valor" name="valor" type="number" min="0" step="0.01" value="${U.esc(c.valor || "")}" ${c.tipoCurso !== "pago" ? "disabled" : ""}>
+        </div>
+        <div class="field full" style="font-size:0.78rem; color:var(--text-muted);">
+          Em cursos pagos é possível marcar alunos como <strong>bolsistas</strong> na hora da matrícula.
+        </div>
         <div class="form-section">Módulos (nome · descrição · horas)</div>
         <div class="full" id="mod-lista">${modRows}</div>
         <div class="full">
@@ -121,12 +146,22 @@ function abrirFormCurso(c) {
       ementa: dados.ementa.trim(),
       status: dados.status,
       corIndex: Number(dados.corIndex) || 1,
-      modulos: lerModulos()
+      modulos: lerModulos(),
+      tipoCurso: dados.tipoCurso,
+      cobranca: dados.tipoCurso === "pago" ? (dados.cobranca || "unico") : "",
+      valor: dados.tipoCurso === "pago" ? (Number(dados.valor) || 0) : 0
     });
     U.toast("Curso salvo.");
     App.render();
   });
   ligarRemocaoModulos();
+  /* habilita/desabilita campos financeiros conforme o tipo */
+  const selTipo = document.getElementById("f-tipo");
+  selTipo.addEventListener("change", () => {
+    const pago = selTipo.value === "pago";
+    document.getElementById("f-cobr").disabled = !pago;
+    document.getElementById("f-valor").disabled = !pago;
+  });
 }
 
 Actions.novoCurso = () => abrirFormCurso({ nome: "", ementa: "", status: "ativo", corIndex: (Store.col("cursos").length % 8) + 1, modulos: [] });

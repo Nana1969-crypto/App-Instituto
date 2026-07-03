@@ -89,17 +89,127 @@ Views.graficos = () => {
       })))
     : `<div class="empty-note">Nenhum encaminhamento registrado ainda.</div>`;
 
+  /* ---- visão geral do instituto (cursos + atendimentos) ---- */
+  const eg = Store.enchenteGeral();
+  const grafEnchGeral = Charts.donut([
+    { label: "Atingidos", value: eg.sim, color: "var(--danger)" },
+    { label: "Não atingidos", value: eg.nao, color: "var(--good)" },
+    { label: "Não informado", value: eg.semInfo, color: "#A8A296" }
+  ], { subtitulo: "pessoas" });
+
+  const grafAreas = Charts.bars([
+    { label: "Alunos (cursos)", value: Store.col("alunos").length, color: "var(--p1)" },
+    { label: "Pacientes (atendimentos)", value: Store.col("pacientes").length, color: "var(--p4)" }
+  ]);
+
+  const encGeral = Store.encaminhamentoGeral();
+  const grafEncGeral = encGeral.length
+    ? Charts.bars(encGeral.map((x, i) => ({ label: x.nome, value: x.qtd, color: x.semInfo ? "#A8A296" : Charts.cor.p(i) })))
+    : `<div class="empty-note">Nenhum encaminhamento registrado.</div>`;
+
+  /* ---- gratuidade (todas as áreas) ---- */
+  const g = Store.resumoGratuidade();
+  const grafCondAlunos = Charts.donut([
+    { label: "Gratuitos", value: g.alunosGratuitos, color: "var(--good)" },
+    { label: "Bolsistas", value: g.alunosBolsistas, color: "var(--p4)" },
+    { label: "Pagantes", value: g.alunosPagantes, color: "var(--accent)" }
+  ], { subtitulo: "alunos" });
+  const grafCondPac = Charts.donut([
+    { label: "Gratuitos", value: g.pacGratuitos, color: "var(--good)" },
+    { label: "Pagos", value: g.pacPagos, color: "var(--accent)" }
+  ], { subtitulo: "pacientes" });
+  const grafAtGrat = g.atGratuitosPorEspecialidade.length
+    ? Charts.bars(g.atGratuitosPorEspecialidade.map(x => ({
+        label: x.nome, value: x.qtd, color: `var(--p${AT.espCorIndex(x.nome)})`
+      })))
+    : `<div class="empty-note">Nenhum atendimento gratuito registrado.</div>`;
+
   return `
     <div class="page-head">
       <div>
         <h2>Gráficos</h2>
-        <p>Relatórios visuais dos cursos, presença e perfil social dos alunos. Passe o mouse sobre as fatias para ver os valores.</p>
+        <p>Relatórios visuais de todo o instituto: cursos, atendimentos, gratuidade e impacto social. Passe o mouse sobre as fatias para ver os valores.</p>
       </div>
       <div class="head-actions">
         <button class="btn ghost" data-action="imprimir">Imprimir / PDF</button>
       </div>
     </div>
 
+    <div class="alpha-letter" style="border:none; font-size:0.9rem;">VISÃO GERAL DO INSTITUTO — TODAS AS ÁREAS</div>
+    <section class="grid-2-even">
+      <div class="panel">
+        <h3>Impacto das enchentes — geral</h3>
+        <p class="panel-sub">Alunos dos cursos + pacientes dos atendimentos (${eg.alunos.sim} ${U.plural(eg.alunos.sim, "aluno atingido", "alunos atingidos")}, ${eg.pacientes.sim} ${U.plural(eg.pacientes.sim, "paciente atingido", "pacientes atingidos")})</p>
+        ${grafEnchGeral}
+      </div>
+      <div class="panel">
+        <h3>Pessoas por área</h3>
+        <p class="panel-sub">Quantas pessoas cada frente do instituto alcança</p>
+        ${grafAreas}
+        <div class="combo-note" style="margin-top:14px;">
+          <strong>${Store.col("alunos").length + Store.col("pacientes").length} pessoas</strong> cadastradas no total (uma mesma pessoa pode estar nas duas áreas).
+        </div>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>Origem dos encaminhamentos — geral</h3>
+      <p class="panel-sub">Cursos e atendimentos somados</p>
+      ${grafEncGeral}
+    </section>
+
+    <div class="alpha-letter" style="border:none; font-size:0.9rem;">GRATUIDADE — TODAS AS ÁREAS</div>
+    <section class="stat-strip">
+      <div class="stat-card" style="--stat-color: var(--good)">
+        <span class="label">Pessoas atendidas sem custo</span>
+        <span class="value">${g.pessoasGratuitas}</span>
+        <span class="delta">alunos gratuitos + bolsistas + pacientes gratuitos</span>
+      </div>
+      <div class="stat-card" style="--stat-color: var(--p4)">
+        <span class="label">Bolsistas</span>
+        <span class="value">${g.alunosBolsistas}</span>
+        <span class="delta">em cursos pagos</span>
+      </div>
+      <div class="stat-card" style="--stat-color: var(--navy-strong)">
+        <span class="label">Cursos</span>
+        <span class="value">${g.cursosGratuitos}<span style="font-size:1rem; color:var(--text-muted);"> grátis</span></span>
+        <span class="delta">${g.cursosPagos} ${U.plural(g.cursosPagos, "curso pago", "cursos pagos")}</span>
+      </div>
+      <div class="stat-card" style="--stat-color: var(--accent)">
+        <span class="label">Atendimentos gratuitos</span>
+        <span class="value">${g.atendimentosGratuitos}</span>
+        <span class="delta">consultas de pacientes gratuitos</span>
+      </div>
+    </section>
+    <section class="grid-2-even">
+      <div class="panel">
+        <h3>Alunos dos cursos por condição</h3>
+        <p class="panel-sub">Gratuitos, bolsistas e pagantes</p>
+        ${grafCondAlunos}
+      </div>
+      <div class="panel">
+        <h3>Pacientes por condição</h3>
+        <p class="panel-sub">Atendimentos gratuitos × pagos</p>
+        ${grafCondPac}
+      </div>
+    </section>
+    <section class="grid-2-even">
+      <div class="panel">
+        <h3>Atendimentos gratuitos por especialidade</h3>
+        <p class="panel-sub">Somente consultas de pacientes gratuitos</p>
+        ${grafAtGrat}
+      </div>
+      <div class="panel">
+        <h3>Enchentes entre os atendidos gratuitamente</h3>
+        <p class="panel-sub">Recorte social da gratuidade</p>
+        ${Charts.donut([
+          { label: "Atingidos", value: g.enchenteGratuitos.sim, color: "var(--danger)" },
+          { label: "Não atingidos", value: g.enchenteGratuitos.nao, color: "var(--good)" },
+          { label: "Não informado", value: g.enchenteGratuitos.semInfo, color: "#A8A296" }
+        ], { subtitulo: "pessoas" })}
+      </div>
+    </section>
+
+    <div class="alpha-letter" style="border:none; font-size:0.9rem;">CURSOS</div>
     <section class="grid-2-even">
       <div class="panel">
         <h3>Alunos por curso</h3>

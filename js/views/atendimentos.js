@@ -689,12 +689,15 @@ Actions.csvPacientes = () => {
   const cab = ["Nome", "CPF", "RG", "Nascimento", "Idade", "Sexo", "Endereço", "Bairro", "Cidade",
     "Telefone", "WhatsApp", "E-mail", "Responsável", "Escolaridade", "Escola", "Profissão",
     "Estado civil", "Encaminhado por", "Situação socioeconômica", "Benefícios sociais",
+    "Atingido pelas enchentes", "Impacto das enchentes",
     "Tipo de atendimento", "Cobrança", "Valor", "Especialidades que usa", "Observações"];
   const linhas = U.ordenarPorNome(Store.col("pacientes")).map(p => U.linhaCSV([
     p.nome, p.cpf, p.rg, U.fmtData(p.nascimento), U.idade(p.nascimento) ?? "", p.sexo,
     p.endereco, p.bairro, p.cidade, p.telefone, p.whatsapp, p.email, p.responsavel,
     p.escolaridade, p.escola, p.profissao, p.estadoCivil, p.encaminhadoPor,
     p.situacaoSocio, p.beneficios,
+    p.atingidoEnchente === "sim" ? "Sim" : p.atingidoEnchente === "nao" ? "Não" : "",
+    p.impactoEnchentes,
     p.tipoAtendimento === "pago" ? "Pago" : "Gratuito",
     p.tipoAtendimento === "pago" ? (p.cobranca === "mensal" ? "Mensal" : "Por consulta") : "",
     p.tipoAtendimento === "pago" ? p.valor : "",
