@@ -56,6 +56,13 @@ const U = {
     return Math.round((parte / total) * 100);
   },
 
+  /* hash simples para o PIN do profissional (organizacional, não criptografia forte) */
+  hashPin(s) {
+    let h = 5381;
+    for (const c of String(s)) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0;
+    return h.toString(36);
+  },
+
   moeda(v) {
     const n = Number(v) || 0;
     return "R$ " + n.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");

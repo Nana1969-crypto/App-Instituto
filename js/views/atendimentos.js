@@ -20,7 +20,8 @@ const AT = {
   subnav(ativa) {
     const abas = [
       ["", "Agenda"], ["pacientes", "Pacientes"],
-      ["profissionais", "Profissionais"], ["relatorios", "Relatórios"]
+      ["profissionais", "Profissionais"], ["relatorios", "Relatórios"],
+      ["minha-area", "Minha área"]
     ];
     return `<div class="subtabs">${abas.map(([slug, rotulo]) =>
       `<a href="#/atendimentos${slug ? "/" + slug : ""}" class="${ativa === slug ? "active" : ""}">${rotulo}</a>`
@@ -36,6 +37,7 @@ Views.atendimentos = param => {
   if (param === "pacientes") return Views.pacientesLista();
   if (param === "profissionais") return viewProfSaude();
   if (param === "relatorios") return viewRelatoriosAtend();
+  if (param === "minha-area") return viewMinhaArea();
   return viewAgenda();
 };
 
@@ -296,6 +298,12 @@ function abrirFormProfSaude(p) {
           <label for="fps-email">E-mail</label>
           <input id="fps-email" name="email" type="email" value="${U.esc(p.email)}">
         </div>
+        <div class="form-section">Acesso à "Minha área"</div>
+        <div class="field">
+          <label for="fps-pin">PIN de acesso (4 a 6 dígitos)</label>
+          <input id="fps-pin" name="pinNovo" type="password" inputmode="numeric" minlength="4" maxlength="6"
+            placeholder="${p.pinHash ? "já cadastrado — preencha para trocar" : "defina o PIN do profissional"}" autocomplete="new-password">
+        </div>
       </div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
@@ -303,7 +311,13 @@ function abrirFormProfSaude(p) {
       </div>
     </form>`, dados => {
     if (!dados.nome.trim()) return false;
-    Store.upsert("profsaude", { id: p.id || undefined, ...dados, nome: dados.nome.trim() });
+    const { pinNovo, ...resto } = dados;
+    const obj = { id: p.id || undefined, ...resto, nome: dados.nome.trim(), pinHash: p.pinHash || "" };
+    if (pinNovo && pinNovo.trim()) {
+      if (!/^\d{4,6}$/.test(pinNovo.trim())) { alert("O PIN deve ter de 4 a 6 dígitos numéricos."); return false; }
+      obj.pinHash = U.hashPin(pinNovo.trim());
+    }
+    Store.upsert("profsaude", obj);
     U.toast("Profissional salvo.");
     App.render();
   });
@@ -311,7 +325,7 @@ function abrirFormProfSaude(p) {
 
 Actions.novoProfSaude = () => abrirFormProfSaude({
   nome: "", especialidade: Store.config.especialidades[0], crp: "", crm: "", registro: "",
-  dias: "", horarios: "", telefone: "", email: ""
+  dias: "", horarios: "", telefone: "", email: "", pinHash: ""
 });
 Actions.editarProfSaude = id => abrirFormProfSaude(Store.get("profsaude", id));
 Actions.excluirProfSaude = id => {
@@ -476,6 +490,188 @@ function viewRelatoriosAtend() {
     </div>
   `;
 }
+
+/* ---------------- Minha área (área restrita do profissional) ---------------- */
+
+const CHAVE_PROF_LOGADO = "bzn-prof-logado";
+
+function profLogado() {
+  const id = sessionStorage.getItem(CHAVE_PROF_LOGADO);
+  if (!id) return null;
+  const p = Store.get("profsaude", id);
+  if (!p) { sessionStorage.removeItem(CHAVE_PROF_LOGADO); return null; }
+  return p;
+}
+
+function viewMinhaArea() {
+  const prof = profLogado();
+  if (!prof) return viewLoginProf();
+
+  const meus = Store.col("atendimentos").filter(a => a.profissionalId === prof.id);
+  const hoje = U.hojeISO();
+  const proximos = meus
+    .filter(a => a.data >= hoje && ["agendado", "confirmado"].includes(a.status))
+    .sort((x, y) => (x.data + (x.hora || "")).localeCompare(y.data + (y.hora || "")));
+  const historico = meus
+    .filter(a => !(a.data >= hoje && ["agendado", "confirmado"].includes(a.status)))
+    .sort((x, y) => (y.data + (y.hora || "")).localeCompare(x.data + (x.hora || "")));
+
+  const realizados = meus.filter(a => a.status === "realizado").length;
+  const faltas = meus.filter(a => a.status === "faltou").length;
+  const taxaFalta = (realizados + faltas) ? Math.round((faltas / (realizados + faltas)) * 100) : null;
+
+  /* pacientes deste profissional (dados administrativos, sem informações clínicas) */
+  const idsPac = [...new Set(meus.map(a => a.pacienteId))];
+  const pacientes = U.ordenarPorNome(idsPac.map(id => Store.get("pacientes", id)).filter(Boolean));
+  const linhasPac = pacientes.map(p => {
+    const doPac = meus.filter(a => a.pacienteId === p.id);
+    const ultimo = doPac.filter(a => a.status === "realizado").sort((x, y) => y.data.localeCompare(x.data))[0];
+    const fin = p.tipoAtendimento === "pago"
+      ? `<span class="pill info">pago</span> ${p.cobranca === "mensal" ? U.moeda(p.valor) + "/mês" : U.moeda(p.valor) + "/consulta"}`
+      : `<span class="pill ok">gratuito</span>`;
+    return `<tr>
+      <td>${U.esc(p.nome)}</td>
+      <td>${U.esc(p.whatsapp || p.telefone || "—")}</td>
+      <td>${fin}</td>
+      <td>${doPac.length}</td>
+      <td>${ultimo ? U.fmtData(ultimo.data) : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  const linhaMinha = a => {
+    const pac = Store.get("pacientes", a.pacienteId);
+    return `<tr>
+      <td style="white-space:nowrap">${U.fmtData(a.data)} ${U.esc(a.hora || "")}</td>
+      <td>${U.esc(pac ? pac.nome : "—")}</td>
+      <td>${U.esc(a.tipoConsulta || "—")} · ${U.esc(a.formato || "—")} · ${U.esc(a.modalidade || "—")}</td>
+      <td>${AT.statusPill(a.status)}</td>
+      <td><button class="icon-btn" data-action="editarAtend" data-id="${a.id}" title="Atualizar status" aria-label="Atualizar atendimento">&#9998;</button></td>
+    </tr>`;
+  };
+  const cab = `<thead><tr><th>Data</th><th>Paciente</th><th>Tipo</th><th>Status</th><th></th></tr></thead>`;
+
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Minha área — ${U.esc(prof.nome)}</h2>
+        <p>${U.esc(prof.especialidade)} · seus pacientes e sua agenda. Dados administrativos apenas — o sistema não guarda informações clínicas.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn ghost" data-action="sairProf">Sair da minha área</button>
+      </div>
+    </div>
+    ${AT.subnav("minha-area")}
+
+    <section class="stat-strip">
+      <div class="stat-card" style="--stat-color: var(--p${AT.espCorIndex(prof.especialidade)})">
+        <span class="label">Meus pacientes</span>
+        <span class="value">${pacientes.length}</span>
+        <span class="delta">${pacientes.filter(p => p.tipoAtendimento === "pago").length} pagantes · ${pacientes.filter(p => p.tipoAtendimento !== "pago").length} gratuitos</span>
+      </div>
+      <div class="stat-card" style="--stat-color: var(--accent)">
+        <span class="label">Atendimentos</span>
+        <span class="value">${meus.length}</span>
+        <span class="delta">${realizados} realizados</span>
+      </div>
+      <div class="stat-card" style="--stat-color: var(--navy-strong)">
+        <span class="label">Próximos</span>
+        <span class="value">${proximos.length}</span>
+        <span class="delta">agendados e confirmados</span>
+      </div>
+      <div class="stat-card" style="--stat-color: ${taxaFalta !== null && taxaFalta > 20 ? "var(--danger)" : "var(--good)"}">
+        <span class="label">Taxa de faltas</span>
+        <span class="value">${taxaFalta !== null ? taxaFalta + "%" : "—"}</span>
+        <span class="delta">dos meus atendimentos</span>
+      </div>
+    </section>
+
+    <div class="panel">
+      <h3>Minha agenda — próximos</h3>
+      <p class="panel-sub">Somente os seus atendimentos</p>
+      ${proximos.length ? `<div class="table-wrap"><table>${cab}<tbody>${proximos.map(linhaMinha).join("")}</tbody></table></div>`
+        : `<div class="empty-note">Nenhum atendimento futuro.</div>`}
+    </div>
+
+    <div class="panel">
+      <h3>Meus pacientes</h3>
+      <p class="panel-sub">Contato, condição financeira e histórico — sem dados clínicos</p>
+      ${pacientes.length ? `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Paciente</th><th>Contato</th><th>Financeiro</th><th>Atendimentos</th><th>Último realizado</th></tr></thead>
+        <tbody>${linhasPac}</tbody>
+      </table></div>` : `<div class="empty-note">Você ainda não tem pacientes vinculados.</div>`}
+    </div>
+
+    <div class="panel">
+      <h3>Histórico dos meus atendimentos</h3>
+      <p class="panel-sub">Realizados, faltas e cancelados</p>
+      ${historico.length ? `<div class="table-wrap"><table>${cab}<tbody>${historico.map(linhaMinha).join("")}</tbody></table></div>`
+        : `<div class="empty-note">Nenhum registro ainda.</div>`}
+    </div>
+  `;
+}
+
+function viewLoginProf() {
+  const profs = U.ordenarPorNome(Store.col("profsaude"));
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Minha área</h2>
+        <p>Acesso restrito: cada profissional vê apenas os próprios pacientes e a própria agenda.</p>
+      </div>
+    </div>
+    ${AT.subnav("minha-area")}
+
+    <div class="panel" style="max-width:480px;">
+      <h3>Entrar</h3>
+      <p class="panel-sub">Escolha seu nome e digite seu PIN</p>
+      ${profs.length ? `
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        <div class="field">
+          <label for="login-prof">Profissional</label>
+          <select id="login-prof">
+            ${profs.map(p => `<option value="${p.id}">${U.esc(p.nome + " — " + p.especialidade)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label for="login-pin">PIN</label>
+          <input id="login-pin" type="password" inputmode="numeric" maxlength="6" placeholder="4 a 6 dígitos" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn accent" data-action="entrarProf">Entrar</button>
+      </div>
+      <div class="alert-box info" style="margin-top:14px;">
+        <span class="ico">&#128274;</span>
+        <div><p>O PIN é cadastrado pela secretaria no formulário do profissional (aba Profissionais). Esta área organiza o acesso no dia a dia, mas os dados continuam no navegador deste computador.</p></div>
+      </div>`
+      : `<div class="empty-note">Nenhum profissional cadastrado ainda.<br>Cadastre a equipe na aba <strong>Profissionais</strong>.</div>`}
+    </div>
+  `;
+}
+
+Actions.entrarProf = () => {
+  const id = document.getElementById("login-prof").value;
+  const pin = document.getElementById("login-pin").value.trim();
+  const p = Store.get("profsaude", id);
+  if (!p) return;
+  if (!p.pinHash) { alert("Este profissional ainda não tem PIN cadastrado.\nPeça para a secretaria definir o PIN na aba Profissionais → editar."); return; }
+  if (U.hashPin(pin) !== p.pinHash) {
+    U.toast("PIN incorreto.");
+    document.getElementById("login-pin").value = "";
+    document.getElementById("login-pin").focus();
+    return;
+  }
+  sessionStorage.setItem(CHAVE_PROF_LOGADO, p.id);
+  U.toast(`Bem-vindo(a), ${p.nome.split(" ")[0]}!`);
+  App.render();
+};
+
+Actions.sairProf = () => {
+  sessionStorage.removeItem(CHAVE_PROF_LOGADO);
+  U.toast("Você saiu da sua área.");
+  App.render();
+};
 
 /* filtros da agenda */
 const aposRenderAtend = Views.aposRender;

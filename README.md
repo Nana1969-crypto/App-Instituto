@@ -39,6 +39,12 @@ no próprio navegador (localStorage) de quem usa.
     receita prevista no mês, pacientes pagantes, cruzamento de especialidades
     por paciente e exportação CSV.
   Novas especialidades podem ser adicionadas a qualquer momento (botão "+").
+- **Minha área (área restrita do profissional)**: cada profissional entra com um
+  PIN (definido pela secretaria no cadastro dele) e vê somente os próprios
+  pacientes, agenda, valores e estatísticas — sem dados clínicos, que o sistema
+  não armazena. *Atenção: é uma restrição organizacional; como os dados ficam no
+  navegador, a proteção forte com login real virá na versão 2 (com servidor).*
+  Nos dados de exemplo, o PIN dos três profissionais é `1234`.
 
 O campo **Encaminhamento** dos alunos já vem com as origens *Demanda espontânea, CRAS
 e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botão "+" ao

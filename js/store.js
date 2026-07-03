@@ -488,10 +488,11 @@ const Store = (() => {
     }
 
     /* --- módulo de atendimentos --- */
+    const pinDemo = U.hashPin("1234"); // PIN dos profissionais de exemplo: 1234
     const profSaude = [
-      { nome: "Dra. Helena Souza", especialidade: "Psicologia", crp: "07/12345", crm: "", registro: "", dias: "Seg, Qua e Sex", horarios: "13h–18h", telefone: "(51) 99611-2020", email: "helena@exemplo.com" },
-      { nome: "Dr. Marcos Antunes", especialidade: "Psiquiatria", crp: "", crm: "CRM-RS 45678", registro: "", dias: "Ter", horarios: "8h–12h", telefone: "(51) 99522-3030", email: "marcos@exemplo.com" },
-      { nome: "Renata Borges", especialidade: "Neuropsicopedagogia", crp: "", crm: "", registro: "ABPp 3321", dias: "Qui e Sex", horarios: "9h–15h", telefone: "(51) 99433-4040", email: "renata@exemplo.com" }
+      { nome: "Dra. Helena Souza", especialidade: "Psicologia", crp: "07/12345", crm: "", registro: "", dias: "Seg, Qua e Sex", horarios: "13h–18h", telefone: "(51) 99611-2020", email: "helena@exemplo.com", pinHash: pinDemo },
+      { nome: "Dr. Marcos Antunes", especialidade: "Psiquiatria", crp: "", crm: "CRM-RS 45678", registro: "", dias: "Ter", horarios: "8h–12h", telefone: "(51) 99522-3030", email: "marcos@exemplo.com", pinHash: pinDemo },
+      { nome: "Renata Borges", especialidade: "Neuropsicopedagogia", crp: "", crm: "", registro: "ABPp 3321", dias: "Qui e Sex", horarios: "9h–15h", telefone: "(51) 99433-4040", email: "renata@exemplo.com", pinHash: pinDemo }
     ].map(p => upsert("profsaude", p));
 
     const nomesPac = [
