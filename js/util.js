@@ -72,6 +72,29 @@ const U = {
     return n === 1 ? um : muitos;
   },
 
+  /* lê uma imagem do input e devolve dataURL comprimido (máx. 900px, JPEG),
+     para caber no armazenamento do navegador */
+  comprimirImagem(arquivo, maxLado = 900, qualidade = 0.72) {
+    return new Promise((resolver, rejeitar) => {
+      const leitor = new FileReader();
+      leitor.onerror = () => rejeitar(new Error("Não foi possível ler a imagem."));
+      leitor.onload = () => {
+        const img = new Image();
+        img.onerror = () => rejeitar(new Error("Arquivo não é uma imagem válida."));
+        img.onload = () => {
+          const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * escala);
+          canvas.height = Math.round(img.height * escala);
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolver(canvas.toDataURL("image/jpeg", qualidade));
+        };
+        img.src = leitor.result;
+      };
+      leitor.readAsDataURL(arquivo);
+    });
+  },
+
   baixarArquivo(nome, conteudo, tipo) {
     const blob = new Blob([conteudo], { type: tipo || "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);

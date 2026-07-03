@@ -10,7 +10,8 @@ const Store = (() => {
   const vazio = () => ({
     cursos: [],       // {id, nome, ementa, corIndex, status, modulos:[{nome, descricao, horas}],
                       //  modalidade: curso|workshop|palestra,
-                      //  tipoCurso: gratuito|pago, valor, cobranca: mensal|unico}
+                      //  tipoCurso: gratuito|pago, valor, cobranca: mensal|unico,
+                      //  fotos: [dataURL, ...] (até 8, comprimidas)}
     eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
                       //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
     professores: [],  // {id, nome, telefone, email, formacao, experiencia}
