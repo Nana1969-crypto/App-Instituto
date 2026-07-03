@@ -125,6 +125,8 @@ Views.dashboard = () => {
       </div>
     </section>
 
+    ${secaoAtendimentosDash()}
+
     <section class="grid-2">
       <div class="panel">
         <h3>Trajetória entre cursos</h3>
@@ -144,6 +146,46 @@ Views.dashboard = () => {
     </section>
   `;
 };
+
+/* resumo do módulo de atendimentos e da gratuidade no painel inicial */
+function secaoAtendimentosDash() {
+  const ra = Store.resumoAtendimentos();
+  if (!ra.pacientes && !ra.total) return "";
+  const g = Store.resumoGratuidade();
+  const hoje = ra.hoje;
+  return `
+    <section class="panel">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h3>Atendimentos clínicos</h3>
+          <p class="panel-sub" style="margin-bottom:14px;">Psicologia, Psiquiatria e Neuropsicopedagogia</p>
+        </div>
+        <a href="#/atendimentos" style="font-size:0.82rem; font-weight:600;">Abrir módulo &rarr;</a>
+      </div>
+      <div class="stat-strip">
+        <div class="stat-card" style="--stat-color: var(--navy-strong)">
+          <span class="label">Pacientes</span>
+          <span class="value">${ra.pacientes}</span>
+          <span class="delta">${g.pacGratuitos} gratuitos · ${g.pacPagos} pagos</span>
+        </div>
+        <div class="stat-card" style="--stat-color: var(--accent)">
+          <span class="label">Hoje</span>
+          <span class="value">${hoje}</span>
+          <span class="delta">${ra.proximos} ${U.plural(ra.proximos, "próximo agendado", "próximos agendados")}</span>
+        </div>
+        <div class="stat-card" style="--stat-color: ${ra.taxaFalta !== null && ra.taxaFalta > 20 ? "var(--danger)" : "var(--good)"}">
+          <span class="label">Taxa de faltas</span>
+          <span class="value">${ra.taxaFalta !== null ? ra.taxaFalta + "%" : "—"}</span>
+          <span class="delta">nos atendimentos</span>
+        </div>
+        <div class="stat-card" style="--stat-color: var(--good)">
+          <span class="label">Pessoas sem custo</span>
+          <span class="value">${g.pessoasGratuitas}</span>
+          <span class="delta">em todo o instituto</span>
+        </div>
+      </div>
+    </section>`;
+}
 
 Actions.carregarDemo = () => {
   if (confirm("Carregar dados de exemplo (alunos, turmas e chamadas fictícios) para conhecer o sistema?\nVocê pode apagar tudo depois em Relatórios → Backup.")) {

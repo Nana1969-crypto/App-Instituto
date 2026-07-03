@@ -91,6 +91,8 @@ Views.relatorios = () => {
       </div>
     </div>
 
+    ${painelFinanceiroCursos()}
+
     ${blocosTurmas || `<div class="panel"><div class="empty-note">Nenhuma turma com matrículas para gerar relatório de presença.</div></div>`}
 
     <div class="panel">
@@ -105,6 +107,34 @@ Views.relatorios = () => {
     </div>
   `;
 };
+
+/* financeiro dos cursos pagos (só aparece se houver curso pago) */
+function painelFinanceiroCursos() {
+  const f = Store.resumoFinanceiroCursos();
+  if (!f.porCurso.length) return "";
+  const linhas = f.porCurso.map(x => `
+    <tr>
+      <td><span class="chip cor-${x.curso.corIndex}">${U.esc(x.curso.nome)}</span></td>
+      <td>${U.moeda(x.valor)}${x.curso.cobranca === "mensal" ? "/mês" : " (único)"}</td>
+      <td>${x.pagantes}</td>
+      <td>${x.bolsistas}</td>
+      <td style="font-weight:700">${U.moeda(x.previsto)}${x.curso.cobranca === "mensal" ? "/mês" : ""}</td>
+    </tr>`).join("");
+  return `
+    <div class="panel">
+      <h3>Financeiro dos cursos pagos</h3>
+      <p class="panel-sub">Pagantes, bolsistas e receita prevista (matrículas não desistentes)</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Curso</th><th>Valor</th><th>Pagantes</th><th>Bolsistas</th><th>Receita prevista</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table></div>
+      <div class="combo-note">
+        Total previsto: <strong>${U.moeda(f.receitaMensal)}/mês</strong> em mensalidades
+        ${f.receitaUnica ? ` + <strong>${U.moeda(f.receitaUnica)}</strong> em valores únicos` : ""}.
+        Bolsistas não geram cobrança.
+      </div>
+    </div>`;
+}
 
 /* ---------- exportações ---------- */
 

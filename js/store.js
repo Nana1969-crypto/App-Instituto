@@ -485,6 +485,24 @@ const Store = (() => {
     })).sort((a, b) => b.qtd - a.qtd);
   }
 
+  /* financeiro dos cursos pagos: pagantes, bolsistas e receita prevista */
+  function resumoFinanceiroCursos() {
+    const porCurso = [];
+    let receitaMensal = 0, receitaUnica = 0;
+    for (const c of db.cursos.filter(c => c.tipoCurso === "pago")) {
+      const turmaIds = db.turmas.filter(t => t.cursoId === c.id).map(t => t.id);
+      const mats = db.matriculas.filter(m => turmaIds.includes(m.turmaId) && m.status !== "desistente");
+      const bolsistas = mats.filter(m => m.bolsa).length;
+      const pagantes = mats.length - bolsistas;
+      const valor = Number(c.valor) || 0;
+      const previsto = valor * pagantes;
+      if (c.cobranca === "mensal") receitaMensal += previsto;
+      else receitaUnica += previsto;
+      porCurso.push({ curso: c, pagantes, bolsistas, valor, previsto });
+    }
+    return { porCurso, receitaMensal, receitaUnica, total: receitaMensal + receitaUnica };
+  }
+
   /* financeiro: pagantes, gratuitos e receita estimada */
   function resumoFinanceiro() {
     const pagantes = db.pacientes.filter(p => p.tipoAtendimento === "pago");
@@ -665,7 +683,7 @@ const Store = (() => {
     presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
     addEncaminhamento, addEspecialidade,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
-    resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro,
+    resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,
     enchenteGeral, encaminhamentoGeral, resumoGratuidade, condicaoAluno,
     exportarJSON, importarJSON, carregarDemo, limparTudo,
     get config() { return db.config; }
