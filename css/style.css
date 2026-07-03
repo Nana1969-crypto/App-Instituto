@@ -375,6 +375,17 @@ tbody tr.clickable:hover td { background: var(--surface-2); }
 .legend li { list-style: none; display: flex; align-items: center; gap: 8px; }
 .legend .n { margin-left: auto; font-weight: 700; padding-left: 14px; }
 
+/* ---------- gráficos ---------- */
+.chart-bars { display: flex; flex-direction: column; gap: 4px; }
+.chart-bars .bar-row { margin-bottom: 6px; }
+.chart-bars .bar-label { width: 210px; }
+.chart-line-wrap { margin-top: 6px; }
+.legend ul { width: 100%; }
+.donut-wrap .legend li { justify-content: flex-start; }
+@media (max-width: 920px) {
+  .chart-bars .bar-label { width: 130px; }
+}
+
 /* ---------- lista alfabética de alunos ---------- */
 .alpha-letter {
   font-size: 0.8rem; font-weight: 800; color: var(--accent);

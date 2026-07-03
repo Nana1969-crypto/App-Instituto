@@ -22,8 +22,15 @@ no próprio navegador (localStorage) de quem usa.
 - **Professores**: nome, contato, formação e experiência profissional.
 - **Chamada**: presença/falta por turma e data, com histórico editável e frequência
   individual calculada automaticamente.
+- **Gráficos**: relatórios visuais (pizzas/roscas, barras e linha do tempo) — alunos
+  por curso, situação das matrículas, presença média por turma, alunos por professor,
+  evolução da frequência aula a aula, impacto das enchentes e origem dos encaminhamentos.
 - **Relatórios**: presença por turma (com alerta abaixo de 75%), alunos multi-curso,
   combinações de cursos mais comuns, exportação em CSV (Excel) e impressão/PDF.
+
+O campo **Encaminhamento** dos alunos já vem com as origens *Demanda espontânea, CRAS
+e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botão "+" ao
+lado do campo). Há também o campo *Atingido pelas enchentes?* para o gráfico social.
 - **Backup**: exportação e importação de todos os dados em arquivo `.json`.
 
 Na primeira visita, o botão **“Carregar dados de exemplo”** no Painel preenche o

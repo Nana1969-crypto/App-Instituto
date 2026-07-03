@@ -143,6 +143,7 @@ Views.alunoDetalhe = id => {
         <h3>Situação social</h3>
         <p class="panel-sub">Dados sensíveis — uso interno do instituto</p>
         <div class="detail-grid">
+          ${item("Atingido pelas enchentes", a.atingidoEnchente === "sim" ? "Sim" : a.atingidoEnchente === "nao" ? "Não" : "")}
           ${item("Impacto das enchentes", U.esc(a.impactoEnchentes))}
           ${item("Renda familiar", U.esc(a.rendaFamiliar))}
           ${item("Benefícios sociais", U.esc(a.beneficios))}
@@ -158,6 +159,17 @@ Views.alunoDetalhe = id => {
     </div>
   `;
 };
+
+/* monta as <option> do select de encaminhamento, incluindo um valor legado
+   que porventura não esteja mais na lista de opções */
+function opcoesEncaminhamento(atual) {
+  const opcoes = [...Store.config.encaminhamentos];
+  if (atual && !opcoes.some(o => o.toLowerCase() === atual.toLowerCase())) opcoes.push(atual);
+  return ['<option value="">— selecione —</option>']
+    .concat(opcoes.map(o =>
+      `<option value="${U.esc(o)}" ${o === atual ? "selected" : ""}>${U.esc(o)}</option>`))
+    .join("");
+}
 
 function abrirFormAluno(a) {
   App.abrirModal(a.id ? "Editar aluno" : "Novo aluno", `
@@ -207,12 +219,25 @@ function abrirFormAluno(a) {
           <input id="fa-resp" name="responsavel" value="${U.esc(a.responsavel)}">
         </div>
         <div class="field">
-          <label for="fa-enc">Encaminhamento</label>
-          <input id="fa-enc" name="encaminhamento" placeholder="ex.: CRAS, escola, indicação" value="${U.esc(a.encaminhamento)}">
+          <label for="fa-enc">Encaminhamento (origem)</label>
+          <div style="display:flex; gap:6px;">
+            <select id="fa-enc" name="encaminhamento" style="flex:1;">
+              ${opcoesEncaminhamento(a.encaminhamento)}
+            </select>
+            <button type="button" class="btn ghost sm" data-modal-action="novoEncaminhamento" title="Adicionar nova origem">+</button>
+          </div>
         </div>
         <div class="form-section">Situação social</div>
+        <div class="field">
+          <label for="fa-ate">Atingido pelas enchentes?</label>
+          <select id="fa-ate" name="atingidoEnchente">
+            <option value="" ${!a.atingidoEnchente ? "selected" : ""}>Não informado</option>
+            <option value="sim" ${a.atingidoEnchente === "sim" ? "selected" : ""}>Sim</option>
+            <option value="nao" ${a.atingidoEnchente === "nao" ? "selected" : ""}>Não</option>
+          </select>
+        </div>
         <div class="field full">
-          <label for="fa-ench">Impacto das enchentes</label>
+          <label for="fa-ench">Detalhes do impacto das enchentes</label>
           <textarea id="fa-ench" name="impactoEnchentes">${U.esc(a.impactoEnchentes)}</textarea>
         </div>
         <div class="field">
@@ -252,9 +277,23 @@ function abrirFormAluno(a) {
 Actions.novoAluno = () => abrirFormAluno({
   nome: "", nascimento: "", cpf: "", telefone: "", email: "",
   endereco: "", bairro: "", cidade: "", cep: "",
-  responsavel: "", encaminhamento: "", impactoEnchentes: "",
+  responsavel: "", encaminhamento: "", atingidoEnchente: "", impactoEnchentes: "",
   rendaFamiliar: "", beneficios: "", moradiaAtual: "", necessidades: "", observacoes: ""
 });
+
+/* adiciona uma nova origem de encaminhamento sem fechar o formulário do aluno */
+Actions.novoEncaminhamento = () => {
+  const nome = prompt("Nova origem de encaminhamento (ex.: UBS, Igreja, Indicação):");
+  if (!nome) return;
+  const salvo = Store.addEncaminhamento(nome);
+  if (!salvo) return;
+  const sel = document.getElementById("fa-enc");
+  if (sel) {
+    sel.innerHTML = opcoesEncaminhamento(salvo);
+    sel.value = salvo;
+  }
+  U.toast("Origem adicionada.");
+};
 Actions.editarAluno = id => abrirFormAluno(Store.get("alunos", id));
 Actions.verAluno = id => { location.hash = "#/aluno/" + id; };
 Actions.voltarAlunos = () => { location.hash = "#/alunos"; };

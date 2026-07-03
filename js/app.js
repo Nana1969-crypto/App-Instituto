@@ -10,6 +10,7 @@ const App = (() => {
     alunos: () => Views.alunos(),
     aluno: id => Views.alunoDetalhe(id),
     chamada: id => Views.chamada(id),
+    graficos: () => Views.graficos(),
     relatorios: () => Views.relatorios()
   };
 

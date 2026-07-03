@@ -12,11 +12,11 @@ const Store = (() => {
     professores: [],  // {id, nome, telefone, email, formacao, experiencia}
     turmas: [],       // {id, cursoId, professorId, nome, dataInicio, dataFim, horario, local, vagas, status}
     alunos: [],       // {id, nome, nascimento, cpf, telefone, email, endereco, bairro, cidade, cep,
-                      //  responsavel, encaminhamento, impactoEnchentes, rendaFamiliar, beneficios,
-                      //  moradiaAtual, necessidades, observacoes}
+                      //  responsavel, encaminhamento, atingidoEnchente, impactoEnchentes, rendaFamiliar,
+                      //  beneficios, moradiaAtual, necessidades, observacoes}
     matriculas: [],   // {id, alunoId, turmaId, status: cursando|concluido|trancado|desistente, data}
     chamadas: [],     // {id, turmaId, data, conteudo, presencas: {alunoId: true|false}}
-    config: { presencaMinima: 75 }
+    config: { presencaMinima: 75, encaminhamentos: ["Demanda espontânea", "CRAS", "Escolas"] }
   });
 
   let db = null;
@@ -32,6 +32,24 @@ const Store = (() => {
     if (db.cursos.length === 0 && !localStorage.getItem(KEY)) {
       seedCursos();
     }
+    // migrações leves para backups/dados antigos
+    if (!db.config) db.config = {};
+    if (db.config.presencaMinima == null) db.config.presencaMinima = 75;
+    if (!Array.isArray(db.config.encaminhamentos) || !db.config.encaminhamentos.length) {
+      db.config.encaminhamentos = ["Demanda espontânea", "CRAS", "Escolas"];
+    }
+  }
+
+  /* mantém as opções de encaminhamento sempre atualizadas com o que já foi usado */
+  function addEncaminhamento(nome) {
+    const n = String(nome || "").trim();
+    if (!n) return false;
+    if (!db.config.encaminhamentos.some(x => x.toLowerCase() === n.toLowerCase())) {
+      db.config.encaminhamentos.push(n);
+      db.config.encaminhamentos.sort((a, b) => a.localeCompare(b, "pt-BR"));
+      salvar();
+    }
+    return n;
   }
 
   function salvar() {
@@ -205,6 +223,64 @@ const Store = (() => {
     };
   }
 
+  /* ---------- consultas para gráficos ---------- */
+
+  /* presença média por turma, com curso e cor */
+  function presencaPorTurma() {
+    return db.turmas.map(t => {
+      const c = get("cursos", t.cursoId);
+      return { turma: t, curso: c, media: presencaMediaTurma(t.id), alunos: matriculasDaTurma(t.id).length };
+    });
+  }
+
+  /* nº de alunos distintos por professor (via turmas que leciona) */
+  function alunosPorProfessor() {
+    return db.professores.map(p => {
+      const turmaIds = db.turmas.filter(t => t.professorId === p.id).map(t => t.id);
+      const alunos = new Set(db.matriculas.filter(m => turmaIds.includes(m.turmaId)).map(m => m.alunoId));
+      return { professor: p, qtd: alunos.size, turmas: turmaIds.length };
+    });
+  }
+
+  /* evolução da frequência (% presentes) aula a aula, numa turma */
+  function evolucaoFrequencia(turmaId) {
+    return db.chamadas
+      .filter(c => c.turmaId === turmaId)
+      .sort((a, b) => a.data.localeCompare(b.data))
+      .map(c => {
+        const total = Object.keys(c.presencas).length;
+        const pres = Object.values(c.presencas).filter(Boolean).length;
+        return { data: c.data, conteudo: c.conteudo, pct: total ? Math.round((pres / total) * 100) : 0, pres, total };
+      });
+  }
+
+  /* alunos por origem de encaminhamento */
+  function porEncaminhamento() {
+    const cont = new Map();
+    db.config.encaminhamentos.forEach(o => cont.set(o, 0));
+    let semInfo = 0;
+    for (const a of db.alunos) {
+      const e = (a.encaminhamento || "").trim();
+      if (!e) { semInfo++; continue; }
+      cont.set(e, (cont.get(e) || 0) + 1);
+    }
+    const out = [...cont.entries()].map(([nome, qtd]) => ({ nome, qtd }));
+    if (semInfo) out.push({ nome: "Não informado", qtd: semInfo, semInfo: true });
+    return out;
+  }
+
+  /* alunos atingidos pelas enchentes */
+  function porImpactoEnchente() {
+    let sim = 0, nao = 0, semInfo = 0;
+    for (const a of db.alunos) {
+      const v = a.atingidoEnchente || (a.impactoEnchentes && a.impactoEnchentes.trim() ? "sim" : "");
+      if (v === "sim") sim++;
+      else if (v === "nao") nao++;
+      else semInfo++;
+    }
+    return { sim, nao, semInfo, total: db.alunos.length };
+  }
+
   /* ---------- backup ---------- */
   function exportarJSON() {
     return JSON.stringify(db, null, 2);
@@ -239,7 +315,8 @@ const Store = (() => {
       cpf: "", telefone: `(51) 9${8000 + i * 7}-${1000 + i * 11}`,
       email: nome.toLowerCase().split(" ")[0] + i + "@exemplo.com",
       endereco: `Rua Exemplo, ${100 + i}`, bairro: "Zona Norte", cidade: "Porto Alegre", cep: "",
-      responsavel: "", encaminhamento: i % 3 === 0 ? "CRAS Zona Norte" : "",
+      responsavel: "", encaminhamento: ["Demanda espontânea", "CRAS", "Escolas"][i % 3],
+      atingidoEnchente: i % 4 === 0 ? "sim" : (i % 4 === 1 ? "sim" : (i % 4 === 2 ? "nao" : "")),
       impactoEnchentes: i % 4 === 0 ? "Perdeu a moradia na enchente de 2024; realocada." : (i % 4 === 1 ? "Casa atingida, sem perdas totais." : ""),
       rendaFamiliar: "", beneficios: i % 3 === 0 ? "Bolsa Família" : "", moradiaAtual: "", necessidades: "", observacoes: ""
     }));
@@ -292,6 +369,8 @@ const Store = (() => {
     cargaHoraria, matriculasDaTurma, matriculasDoAluno, cursoDaTurma, cursosDoAluno,
     presencaAluno, presencaMediaTurma, presencaMediaGeral, alunosEmRisco,
     alunosPorCurso, cruzamento, resumo,
+    presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
+    addEncaminhamento,
     exportarJSON, importarJSON, carregarDemo, limparTudo,
     get config() { return db.config; }
   };
