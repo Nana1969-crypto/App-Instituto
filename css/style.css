@@ -503,7 +503,7 @@ footer.foot svg { width: 18px; height: 18px; color: var(--navy); }
   body { background: #fff; }
   /* elementos que não fazem sentido no papel */
   .topbar, .menu-btn, .toast, .modal-backdrop,
-  .head-actions, .e-actions, .form-actions,
+  .head-actions, .e-actions, .form-actions, .subtabs,
   .presenca-toggle, .search-input { display: none !important; }
   .view { max-width: 100%; padding: 0; gap: 14px; }
   .panel, .stat-card, .entity-card {

@@ -10,6 +10,8 @@ const App = (() => {
     alunos: () => Views.alunos(),
     aluno: id => Views.alunoDetalhe(id),
     chamada: id => Views.chamada(id),
+    indicadores: sub => sub === "relatorios" ? Views.relatorios() : Views.graficos(),
+    /* rotas antigas continuam funcionando */
     graficos: () => Views.graficos(),
     relatorios: () => Views.relatorios(),
     atendimentos: sub => Views.atendimentos(sub),
@@ -29,7 +31,8 @@ const App = (() => {
         r === rota ||
         (rota === "aluno" && r === "alunos") ||
         (rota === "paciente" && r === "atendimentos") ||
-        (rota === "professor" && r === "professores"));
+        (rota === "professor" && r === "professores") ||
+        ((rota === "graficos" || rota === "relatorios") && r === "indicadores"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
 

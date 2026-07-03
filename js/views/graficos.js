@@ -3,6 +3,14 @@
 
 let turmaEvolucao = "";
 
+/* sub-abas da área de Indicadores (Gráficos | Relatórios) */
+function subnavIndicadores(ativa) {
+  return `<div class="subtabs">
+    <a href="#/indicadores" class="${ativa === "graficos" ? "active" : ""}">Gráficos</a>
+    <a href="#/indicadores/relatorios" class="${ativa === "relatorios" ? "active" : ""}">Relatórios e planilhas</a>
+  </div>`;
+}
+
 Views.graficos = () => {
   const r = Store.resumo();
   const temDados = r.totalMatriculas > 0 || Store.col("alunos").length > 0;
@@ -10,9 +18,10 @@ Views.graficos = () => {
   if (!temDados) {
     return `
       <div class="page-head">
-        <div><h2>Gráficos</h2><p>Relatórios visuais dos cursos, presença e perfil social dos alunos.</p></div>
+        <div><h2>Indicadores</h2><p>Relatórios visuais dos cursos, presença e perfil social dos alunos.</p></div>
         <div class="head-actions"><button class="btn ghost" data-action="carregarDemo">Carregar dados de exemplo</button></div>
       </div>
+      ${subnavIndicadores("graficos")}
       <div class="panel"><div class="empty-note">Ainda não há dados para gerar gráficos.<br>Cadastre alunos e turmas, ou carregue os dados de exemplo.</div></div>`;
   }
 
@@ -127,13 +136,14 @@ Views.graficos = () => {
   return `
     <div class="page-head">
       <div>
-        <h2>Gráficos</h2>
+        <h2>Indicadores</h2>
         <p>Relatórios visuais de todo o instituto: cursos, atendimentos, gratuidade e impacto social. Passe o mouse sobre as fatias para ver os valores.</p>
       </div>
       <div class="head-actions">
         <button class="btn ghost" data-action="imprimir">Imprimir / PDF</button>
       </div>
     </div>
+    ${subnavIndicadores("graficos")}
 
     <div class="alpha-letter" style="border:none; font-size:0.9rem;">VISÃO GERAL DO INSTITUTO — TODAS AS ÁREAS</div>
     <section class="grid-2-even">

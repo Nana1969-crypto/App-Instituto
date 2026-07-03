@@ -132,7 +132,7 @@ Views.dashboard = () => {
         <h3>Trajetória entre cursos</h3>
         <p class="panel-sub">Cruzamento: quais cursos cada aluno já fez</p>
         ${trajetoria || `<div class="empty-note">Nenhum aluno com mais de um curso ainda.</div>`}
-        ${cruz.multi.length > 4 ? `<p style="margin:12px 0 0; font-size:0.8rem;"><a href="#/relatorios">Ver relatório completo &rarr;</a></p>` : ""}
+        ${cruz.multi.length > 4 ? `<p style="margin:12px 0 0; font-size:0.8rem;"><a href="#/indicadores/relatorios">Ver relatório completo &rarr;</a></p>` : ""}
       </div>
 
       <div class="panel">

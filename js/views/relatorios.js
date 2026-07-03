@@ -52,13 +52,14 @@ Views.relatorios = () => {
   return `
     <div class="page-head">
       <div>
-        <h2>Relatórios</h2>
+        <h2>Indicadores</h2>
         <p>Relatório de presença por turma, cruzamento de cursos por aluno, exportações e backup dos dados.</p>
       </div>
       <div class="head-actions">
         <button class="btn ghost" data-action="imprimir">Imprimir / PDF</button>
       </div>
     </div>
+    ${subnavIndicadores("relatorios")}
 
     <div class="panel">
       <h3>Exportar planilhas (CSV — abre no Excel)</h3>
