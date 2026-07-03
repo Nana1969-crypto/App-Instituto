@@ -16,7 +16,23 @@ const Store = (() => {
                       //  beneficios, moradiaAtual, necessidades, observacoes}
     matriculas: [],   // {id, alunoId, turmaId, status: cursando|concluido|trancado|desistente, data}
     chamadas: [],     // {id, turmaId, data, conteudo, presencas: {alunoId: true|false}}
-    config: { presencaMinima: 75, encaminhamentos: ["Demanda espontânea", "CRAS", "Escolas"] }
+
+    /* módulo de atendimentos clínicos */
+    pacientes: [],    // {id, nome, cpf, rg, nascimento, sexo, endereco, bairro, cidade, telefone,
+                      //  whatsapp, email, responsavel, escolaridade, escola, profissao, estadoCivil,
+                      //  encaminhadoPor, situacaoSocio, beneficios, observacoes,
+                      //  tipoAtendimento: gratuito|pago, cobranca: mensal|consulta, valor}
+    profsaude: [],    // {id, nome, especialidade, crp, crm, registro, dias, horarios, telefone, email}
+    atendimentos: [], // {id, data, hora, pacienteId, profissionalId, especialidade,
+                      //  tipoConsulta: primeira|retorno, formato: individual|grupo,
+                      //  modalidade: presencial|online,
+                      //  status: agendado|confirmado|realizado|faltou|cancelado, obs}
+
+    config: {
+      presencaMinima: 75,
+      encaminhamentos: ["Demanda espontânea", "CRAS", "Escolas"],
+      especialidades: ["Psicologia", "Psiquiatria", "Neuropsicopedagogia"]
+    }
   });
 
   let db = null;
@@ -38,6 +54,22 @@ const Store = (() => {
     if (!Array.isArray(db.config.encaminhamentos) || !db.config.encaminhamentos.length) {
       db.config.encaminhamentos = ["Demanda espontânea", "CRAS", "Escolas"];
     }
+    if (!Array.isArray(db.config.especialidades) || !db.config.especialidades.length) {
+      db.config.especialidades = ["Psicologia", "Psiquiatria", "Neuropsicopedagogia"];
+    }
+    if (!Array.isArray(db.pacientes)) db.pacientes = [];
+    if (!Array.isArray(db.profsaude)) db.profsaude = [];
+    if (!Array.isArray(db.atendimentos)) db.atendimentos = [];
+  }
+
+  function addEspecialidade(nome) {
+    const n = String(nome || "").trim();
+    if (!n) return false;
+    if (!db.config.especialidades.some(x => x.toLowerCase() === n.toLowerCase())) {
+      db.config.especialidades.push(n);
+      salvar();
+    }
+    return n;
   }
 
   /* mantém as opções de encaminhamento sempre atualizadas com o que já foi usado */
@@ -107,6 +139,12 @@ const Store = (() => {
     }
     if (nome === "professores") {
       db.turmas.forEach(t => { if (t.professorId === id) t.professorId = ""; });
+    }
+    if (nome === "pacientes") {
+      db.atendimentos = db.atendimentos.filter(a => a.pacienteId !== id);
+    }
+    if (nome === "profsaude") {
+      db.atendimentos.forEach(a => { if (a.profissionalId === id) a.profissionalId = ""; });
     }
     salvar();
   }
@@ -281,6 +319,101 @@ const Store = (() => {
     return { sim, nao, semInfo, total: db.alunos.length };
   }
 
+  /* ---------- consultas do módulo de atendimentos ---------- */
+
+  function atendimentosDoPaciente(pacienteId) {
+    return db.atendimentos
+      .filter(a => a.pacienteId === pacienteId)
+      .sort((a, b) => (b.data + (b.hora || "")).localeCompare(a.data + (a.hora || "")));
+  }
+
+  /* especialidades distintas que o paciente já usou (cruzamento) */
+  function especialidadesDoPaciente(pacienteId) {
+    const set = new Set();
+    for (const a of atendimentosDoPaciente(pacienteId)) {
+      if (a.especialidade) set.add(a.especialidade);
+    }
+    return [...set];
+  }
+
+  /* pacientes com 2+ especialidades e combinações mais comuns */
+  function cruzamentoAtendimentos() {
+    const multi = [];
+    const combos = new Map();
+    for (const p of db.pacientes) {
+      const es = especialidadesDoPaciente(p.id);
+      if (es.length >= 2) {
+        multi.push({ paciente: p, especialidades: es });
+        const ord = [...es].sort((x, y) => x.localeCompare(y, "pt-BR"));
+        for (let i = 0; i < ord.length; i++) {
+          for (let j = i + 1; j < ord.length; j++) {
+            const k = ord[i] + " + " + ord[j];
+            combos.set(k, (combos.get(k) || 0) + 1);
+          }
+        }
+      }
+    }
+    multi.sort((x, y) => y.especialidades.length - x.especialidades.length);
+    return { multi, combos: [...combos.entries()].sort((a, b) => b[1] - a[1]) };
+  }
+
+  function contarPor(lista, campo) {
+    const m = new Map();
+    lista.forEach(x => {
+      const k = x[campo] || "—";
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return [...m.entries()].map(([nome, qtd]) => ({ nome, qtd })).sort((a, b) => b.qtd - a.qtd);
+  }
+
+  function resumoAtendimentos() {
+    const hoje = U.hojeISO();
+    const at = db.atendimentos;
+    const porStatus = { agendado: 0, confirmado: 0, realizado: 0, faltou: 0, cancelado: 0 };
+    at.forEach(a => { if (a.status in porStatus) porStatus[a.status]++; });
+    const realizados = porStatus.realizado;
+    const faltas = porStatus.faltou;
+    const taxaFalta = (realizados + faltas) ? Math.round((faltas / (realizados + faltas)) * 100) : null;
+    return {
+      pacientes: db.pacientes.length,
+      profissionais: db.profsaude.length,
+      total: at.length,
+      hoje: at.filter(a => a.data === hoje && !["cancelado"].includes(a.status)).length,
+      proximos: at.filter(a => a.data >= hoje && ["agendado", "confirmado"].includes(a.status)).length,
+      porStatus, taxaFalta,
+      porEspecialidade: contarPor(at, "especialidade"),
+      porModalidade: contarPor(at.filter(a => a.modalidade), "modalidade"),
+      porTipo: contarPor(at.filter(a => a.tipoConsulta), "tipoConsulta"),
+      porFormato: contarPor(at.filter(a => a.formato), "formato")
+    };
+  }
+
+  function atendimentosPorProfissional() {
+    return db.profsaude.map(p => ({
+      profissional: p,
+      qtd: db.atendimentos.filter(a => a.profissionalId === p.id).length,
+      realizados: db.atendimentos.filter(a => a.profissionalId === p.id && a.status === "realizado").length
+    })).sort((a, b) => b.qtd - a.qtd);
+  }
+
+  /* financeiro: pagantes, gratuitos e receita estimada */
+  function resumoFinanceiro() {
+    const pagantes = db.pacientes.filter(p => p.tipoAtendimento === "pago");
+    const gratuitos = db.pacientes.length - pagantes.length;
+    let mensal = 0, porConsultaMes = 0;
+    const mesAtual = U.hojeISO().slice(0, 7);
+    for (const p of pagantes) {
+      const v = Number(p.valor) || 0;
+      if (p.cobranca === "mensal") mensal += v;
+      else {
+        const realizadosMes = db.atendimentos.filter(a =>
+          a.pacienteId === p.id && a.status === "realizado" && a.data.startsWith(mesAtual)).length;
+        porConsultaMes += v * realizadosMes;
+      }
+    }
+    return { pagantes: pagantes.length, gratuitos, mensal, porConsultaMes, previstoMes: mensal + porConsultaMes };
+  }
+
   /* ---------- backup ---------- */
   function exportarJSON() {
     return JSON.stringify(db, null, 2);
@@ -353,6 +486,70 @@ const Store = (() => {
       });
       upsert("chamadas", { turmaId: turmas[0].id, data: iso, conteudo: `Encontro ${s + 1}`, presencas });
     }
+
+    /* --- módulo de atendimentos --- */
+    const profSaude = [
+      { nome: "Dra. Helena Souza", especialidade: "Psicologia", crp: "07/12345", crm: "", registro: "", dias: "Seg, Qua e Sex", horarios: "13h–18h", telefone: "(51) 99611-2020", email: "helena@exemplo.com" },
+      { nome: "Dr. Marcos Antunes", especialidade: "Psiquiatria", crp: "", crm: "CRM-RS 45678", registro: "", dias: "Ter", horarios: "8h–12h", telefone: "(51) 99522-3030", email: "marcos@exemplo.com" },
+      { nome: "Renata Borges", especialidade: "Neuropsicopedagogia", crp: "", crm: "", registro: "ABPp 3321", dias: "Qui e Sex", horarios: "9h–15h", telefone: "(51) 99433-4040", email: "renata@exemplo.com" }
+    ].map(p => upsert("profsaude", p));
+
+    const nomesPac = [
+      ["Carla Souza Mendes", "F", "gratuito", "", 0],
+      ["Pedro Henrique Alves", "M", "pago", "mensal", 200],
+      ["Sofia Ramos Teixeira", "F", "gratuito", "", 0],
+      ["Miguel Santos Rocha", "M", "pago", "consulta", 80],
+      ["Laura Pereira Dias", "F", "gratuito", "", 0],
+      ["Davi Oliveira Campos", "M", "gratuito", "", 0]
+    ];
+    const pacs = nomesPac.map(([nome, sexo, tipo, cobranca, valor], i) => upsert("pacientes", {
+      nome, sexo,
+      cpf: "", rg: "", nascimento: `${1988 + i * 4}-0${(i % 9) + 1}-2${i % 8}`,
+      endereco: `Av. Modelo, ${200 + i}`, bairro: "Zona Norte", cidade: "Porto Alegre",
+      telefone: `(51) 9${7000 + i * 9}-${2000 + i * 13}`, whatsapp: `(51) 9${7000 + i * 9}-${2000 + i * 13}`,
+      email: nome.toLowerCase().split(" ")[0] + ".pac@exemplo.com",
+      responsavel: i >= 4 ? "Responsável Exemplo" : "",
+      escolaridade: i >= 4 ? "Ensino fundamental" : "Ensino médio",
+      escola: i >= 4 ? "EMEF Zona Norte" : "", profissao: i < 4 ? "Autônomo(a)" : "",
+      estadoCivil: i < 2 ? "Casado(a)" : "Solteiro(a)",
+      encaminhadoPor: ["CRAS", "Escolas", "Demanda espontânea"][i % 3],
+      situacaoSocio: i % 2 === 0 ? "Baixa renda" : "", beneficios: i % 3 === 0 ? "Bolsa Família" : "",
+      observacoes: "", tipoAtendimento: tipo, cobranca, valor
+    }));
+
+    const at = (dias, hora, pac, prof, esp, tipoC, formato, mod, status) => {
+      const d = new Date(2026, 5, 1 + dias);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      upsert("atendimentos", {
+        data: iso, hora, pacienteId: pac.id, profissionalId: prof.id, especialidade: esp,
+        tipoConsulta: tipoC, formato, modalidade: mod, status, obs: ""
+      });
+    };
+    // Carla: Psicologia + Psiquiatria (cruzamento)
+    at(1, "14:00", pacs[0], profSaude[0], "Psicologia", "primeira", "individual", "presencial", "realizado");
+    at(8, "14:00", pacs[0], profSaude[0], "Psicologia", "retorno", "individual", "presencial", "realizado");
+    at(9, "09:00", pacs[0], profSaude[1], "Psiquiatria", "primeira", "individual", "presencial", "realizado");
+    at(36, "14:00", pacs[0], profSaude[0], "Psicologia", "retorno", "individual", "presencial", "agendado");
+    // Pedro: Psicologia online (pagante mensal)
+    at(2, "15:00", pacs[1], profSaude[0], "Psicologia", "primeira", "individual", "online", "realizado");
+    at(16, "15:00", pacs[1], profSaude[0], "Psicologia", "retorno", "individual", "online", "faltou");
+    at(30, "15:00", pacs[1], profSaude[0], "Psicologia", "retorno", "individual", "online", "realizado");
+    // Sofia: Neuropsicopedagogia + Psicologia (cruzamento)
+    at(4, "10:00", pacs[2], profSaude[2], "Neuropsicopedagogia", "primeira", "individual", "presencial", "realizado");
+    at(18, "10:00", pacs[2], profSaude[2], "Neuropsicopedagogia", "retorno", "individual", "presencial", "realizado");
+    at(25, "16:00", pacs[2], profSaude[0], "Psicologia", "primeira", "individual", "presencial", "realizado");
+    // Miguel: Psiquiatria (pagante por consulta)
+    at(9, "10:00", pacs[3], profSaude[1], "Psiquiatria", "primeira", "individual", "presencial", "realizado");
+    at(37, "10:00", pacs[3], profSaude[1], "Psiquiatria", "retorno", "individual", "presencial", "confirmado");
+    // Laura e Davi: grupo de Psicologia
+    at(11, "17:00", pacs[4], profSaude[0], "Psicologia", "primeira", "grupo", "presencial", "realizado");
+    at(11, "17:00", pacs[5], profSaude[0], "Psicologia", "primeira", "grupo", "presencial", "faltou");
+    at(32, "17:00", pacs[4], profSaude[0], "Psicologia", "retorno", "grupo", "presencial", "agendado");
+    at(32, "17:00", pacs[5], profSaude[0], "Psicologia", "retorno", "grupo", "presencial", "agendado");
+    // Davi: Neuropsicopedagogia também
+    at(12, "11:00", pacs[5], profSaude[2], "Neuropsicopedagogia", "primeira", "individual", "presencial", "cancelado");
+    at(19, "11:00", pacs[5], profSaude[2], "Neuropsicopedagogia", "primeira", "individual", "presencial", "realizado");
+
     salvar();
   }
 
@@ -370,7 +567,9 @@ const Store = (() => {
     presencaAluno, presencaMediaTurma, presencaMediaGeral, alunosEmRisco,
     alunosPorCurso, cruzamento, resumo,
     presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
-    addEncaminhamento,
+    addEncaminhamento, addEspecialidade,
+    atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
+    resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro,
     exportarJSON, importarJSON, carregarDemo, limparTudo,
     get config() { return db.config; }
   };

@@ -56,6 +56,11 @@ const U = {
     return Math.round((parte / total) * 100);
   },
 
+  moeda(v) {
+    const n = Number(v) || 0;
+    return "R$ " + n.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  },
+
   plural(n, um, muitos) {
     return n === 1 ? um : muitos;
   },

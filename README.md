@@ -27,6 +27,18 @@ no próprio navegador (localStorage) de quem usa.
   evolução da frequência aula a aula, impacto das enchentes e origem dos encaminhamentos.
 - **Relatórios**: presença por turma (com alerta abaixo de 75%), alunos multi-curso,
   combinações de cursos mais comuns, exportação em CSV (Excel) e impressão/PDF.
+- **Atendimentos (módulo clínico)**: agenda de Psicologia, Psiquiatria e
+  Neuropsicopedagogia com sub-áreas:
+  - *Agenda*: atendimentos com data/hora, paciente, profissional, especialidade,
+    tipo (primeira/retorno), formato (individual/grupo), modalidade
+    (presencial/online) e status (agendado, confirmado, realizado, faltou, cancelado);
+  - *Pacientes*: cadastro único com dados pessoais, sociais e **financeiros**
+    (gratuito ou pago, cobrança mensal ou por consulta, valor);
+  - *Profissionais*: especialidade, CRP/CRM/registro, dias e horários de atendimento;
+  - *Relatórios*: gráficos por especialidade/status/profissional/modalidade,
+    receita prevista no mês, pacientes pagantes, cruzamento de especialidades
+    por paciente e exportação CSV.
+  Novas especialidades podem ser adicionadas a qualquer momento (botão "+").
 
 O campo **Encaminhamento** dos alunos já vem com as origens *Demanda espontânea, CRAS
 e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botão "+" ao

@@ -11,7 +11,9 @@ const App = (() => {
     aluno: id => Views.alunoDetalhe(id),
     chamada: id => Views.chamada(id),
     graficos: () => Views.graficos(),
-    relatorios: () => Views.relatorios()
+    relatorios: () => Views.relatorios(),
+    atendimentos: sub => Views.atendimentos(sub),
+    paciente: id => Views.pacienteDetalhe(id)
   };
 
   function render() {
@@ -21,7 +23,10 @@ const App = (() => {
 
     document.querySelectorAll("#nav-tabs a").forEach(a => {
       const r = a.dataset.route;
-      a.classList.toggle("active", r === rota || (rota === "aluno" && r === "alunos"));
+      a.classList.toggle("active",
+        r === rota ||
+        (rota === "aluno" && r === "alunos") ||
+        (rota === "paciente" && r === "atendimentos"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
 

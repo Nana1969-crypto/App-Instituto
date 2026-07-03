@@ -223,6 +223,7 @@ nav.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .pill.warn { background: var(--warn-soft); color: var(--warn); }
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
 .pill.info { background: var(--navy-tint); color: var(--navy-strong); }
+.pill.muted { background: var(--surface-2); color: var(--text-muted); }
 :root[data-theme="dark"] .pill.info { color: var(--on-navy-muted); }
 @media (prefers-color-scheme: dark) { .pill.info { color: var(--on-navy-muted); } }
 :root[data-theme="light"] .pill.info { color: var(--navy-strong); }
@@ -374,6 +375,17 @@ tbody tr.clickable:hover td { background: var(--surface-2); }
 .legend ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem; }
 .legend li { list-style: none; display: flex; align-items: center; gap: 8px; }
 .legend .n { margin-left: auto; font-weight: 700; padding-left: 14px; }
+
+/* ---------- sub-abas (módulo atendimentos) ---------- */
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.subtabs a {
+  text-decoration: none; font-size: 0.83rem; font-weight: 600;
+  padding: 7px 15px; border-radius: 999px;
+  color: var(--text-muted); border: 1px solid var(--border); background: var(--surface);
+}
+.subtabs a:hover { color: var(--text); background: var(--surface-2); }
+.subtabs a.active { background: var(--navy-strong); border-color: var(--navy-strong); color: #fff; }
+.subtabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- gráficos ---------- */
 .chart-bars { display: flex; flex-direction: column; gap: 4px; }
