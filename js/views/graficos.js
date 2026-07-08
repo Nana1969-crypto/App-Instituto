@@ -120,8 +120,7 @@ Views.graficos = () => {
   const g = Store.resumoGratuidade();
   const grafCondAlunos = Charts.donut([
     { label: "Gratuitos", value: g.alunosGratuitos, color: "var(--good)" },
-    { label: "Bolsistas", value: g.alunosBolsistas, color: "var(--p4)" },
-    { label: "Pagantes", value: g.alunosPagantes, color: "var(--accent)" }
+    { label: "Pagos", value: g.alunosPagos, color: "var(--accent)" }
   ], { subtitulo: "alunos" });
   const grafCondPac = Charts.donut([
     { label: "Gratuitos", value: g.pacGratuitos, color: "var(--good)" },
@@ -172,12 +171,12 @@ Views.graficos = () => {
       <div class="stat-card" style="--stat-color: var(--good)">
         <span class="label">Pessoas atendidas sem custo</span>
         <span class="value">${g.pessoasGratuitas}</span>
-        <span class="delta">alunos gratuitos + bolsistas + pacientes gratuitos</span>
+        <span class="delta">alunos gratuitos + pacientes gratuitos</span>
       </div>
       <div class="stat-card" style="--stat-color: var(--p4)">
         <span class="label">Bolsistas</span>
         <span class="value">${g.alunosBolsistas}</span>
-        <span class="delta">em cursos pagos</span>
+        <span class="delta">isentos dentro dos cursos pagos</span>
       </div>
       <div class="stat-card" style="--stat-color: var(--navy-strong)">
         <span class="label">Cursos</span>
@@ -193,7 +192,7 @@ Views.graficos = () => {
     <section class="grid-2-even">
       <div class="panel">
         <h3>Alunos dos cursos por condição</h3>
-        <p class="panel-sub">Gratuitos, bolsistas e pagantes</p>
+        <p class="panel-sub">Gratuitos × pagos (bolsistas contam como pagos)</p>
         ${grafCondAlunos}
       </div>
       <div class="panel">

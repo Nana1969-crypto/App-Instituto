@@ -14,7 +14,7 @@ Views.cursos = () => {
         <div class="e-head">
           <div>
             <div class="e-title">${U.esc(c.nome)}</div>
-            <span class="chip">${{ workshop: "Workshop", palestra: "Palestra" }[c.modalidade] || "Curso"}</span>
+            <span class="chip">${{ workshop: "Workshop", palestra: "Palestra", imersao: "Imersão" }[c.modalidade] || "Curso"}</span>
             <span class="chip">${c.status === "ativo" ? "Ativo" : "Inativo"}</span>
             ${c.tipoCurso === "pago"
               ? `<span class="pill info">pago · ${U.moeda(c.valor)}${c.cobranca === "mensal" ? "/mês" : ""}</span>`
@@ -74,6 +74,7 @@ function formCursoHTML(c) {
             <option value="curso" ${(c.modalidade || "curso") === "curso" ? "selected" : ""}>Curso</option>
             <option value="workshop" ${c.modalidade === "workshop" ? "selected" : ""}>Workshop</option>
             <option value="palestra" ${c.modalidade === "palestra" ? "selected" : ""}>Palestra</option>
+            <option value="imersao" ${c.modalidade === "imersao" ? "selected" : ""}>Imersão</option>
           </select>
         </div>
         <div class="field">

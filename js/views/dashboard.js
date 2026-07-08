@@ -125,6 +125,8 @@ Views.dashboard = () => {
       </div>
     </section>
 
+    ${secaoAniversariantes()}
+
     ${secaoAtendimentosDash()}
 
     <section class="grid-2">
@@ -146,6 +148,31 @@ Views.dashboard = () => {
     </section>
   `;
 };
+
+/* aviso de aniversariantes do mês (todas as áreas), destacando os de hoje */
+function secaoAniversariantes() {
+  const hoje = new Date();
+  const lista = Store.aniversariantes(hoje.getMonth() + 1);
+  if (!lista.length) return "";
+  const diaHoje = hoje.getDate();
+  const deHoje = lista.filter(x => x.dia === diaHoje);
+  const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  return `
+    <section class="panel">
+      <h3>&#127874; Aniversariantes de ${meses[hoje.getMonth()]}</h3>
+      <p class="panel-sub">${deHoje.length
+        ? `Hoje: ${deHoje.map(x => x.nome.split(" ")[0]).join(", ")} &#127881; Não esqueça os parabéns!`
+        : "Alunos, professores, equipe, profissionais e pacientes"}</p>
+      <div class="cross-chips">
+        ${lista.map(x => `
+          <span class="chip ${x.dia === diaHoje ? "cor-3" : ""}" ${x.dia === diaHoje ? 'style="font-weight:800;"' : ""}>
+            ${x.dia === diaHoje ? "&#127874; " : ""}dia ${x.dia} · ${U.esc(x.nome)}
+            <span style="font-weight:400; opacity:0.75;">(${x.origem})</span>
+          </span>`).join("")}
+      </div>
+    </section>`;
+}
 
 /* resumo do módulo de atendimentos e da gratuidade no painel inicial */
 function secaoAtendimentosDash() {

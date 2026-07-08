@@ -103,10 +103,24 @@ Views.relatorios = () => {
         <button class="btn" data-action="backupExportar">Exportar backup (.json)</button>
         <button class="btn ghost" data-action="backupImportar">Importar backup</button>
         <input type="file" id="arquivo-backup" accept=".json,application/json" hidden>
-        <button class="btn ghost" data-action="alterarSenhaGeral">Alterar senha de entrada</button>
-        <button class="btn danger" data-action="apagarTudo">Apagar todos os dados</button>
+        ${App.nivel() === "admin" ? `<button class="btn danger" data-action="apagarTudo">Apagar todos os dados</button>` : ""}
       </div>
     </div>
+
+    ${App.nivel() === "admin" ? `
+    <div class="panel">
+      <h3>Segurança e logins</h3>
+      <p class="panel-sub">Somente o administrador cria e troca as senhas dos perfis. Os PINs de professores e profissionais são definidos nos respectivos cadastros.</p>
+      <div class="head-actions">
+        <button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>
+        <button class="btn" data-action="senhaPerfil" data-id="secretaria">${Store.temSenha("secretaria") ? "Trocar" : "Criar"} senha da secretaria</button>
+        <button class="btn" data-action="senhaPerfil" data-id="usuario">${Store.temSenha("usuario") ? "Trocar" : "Criar"} senha de usuário</button>
+      </div>
+      <div class="combo-note" style="margin-top:14px;">
+        <strong>Admin</strong>: tudo, inclusive senhas · <strong>Secretaria</strong>: operação completa, sem gerenciar logins ·
+        <strong>Usuário</strong>: visualização do Painel, Agenda e Gráficos, sem dados pessoais.
+      </div>
+    </div>` : ""}
   `;
 };
 
@@ -152,7 +166,7 @@ Actions.csvAlunos = () => {
     a.atingidoEnchente === "sim" ? "Sim" : a.atingidoEnchente === "nao" ? "Não" : "",
     a.impactoEnchentes, a.rendaFamiliar, a.beneficios,
     a.moradiaAtual, a.necessidades,
-    { gratuito: "Gratuito", bolsista: "Bolsista", pagante: "Pagante" }[Store.condicaoAluno(a.id)],
+    { gratuito: "Gratuito", pago: "Pago" }[Store.condicaoAluno(a.id)],
     a.observacoes,
     Store.cursosDoAluno(a.id).map(x => x.curso.nome).join(" + ")
   ]));
@@ -215,15 +229,19 @@ Actions.backupImportar = () => {
   input.click();
 };
 
-Actions.alterarSenhaGeral = () => {
-  const atual = prompt("Digite a senha ATUAL do sistema:");
+/* criar/trocar senha de um perfil — sempre confirmando a senha do admin antes */
+Actions.senhaPerfil = perfil => {
+  if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera senhas."); return; }
+  const rotulo = { admin: "do administrador", secretaria: "da secretaria", usuario: "de usuário" }[perfil];
+  const atual = prompt("Confirme a senha ATUAL do administrador:");
   if (atual === null) return;
-  if (!Store.conferirSenhaGeral(atual)) { alert("Senha atual incorreta."); return; }
-  const nova = prompt("Digite a NOVA senha (mínimo 4 caracteres):");
+  if (!Store.conferirSenha("admin", atual)) { alert("Senha do administrador incorreta."); return; }
+  const nova = prompt(`Digite a nova senha ${rotulo} (mínimo 4 caracteres):`);
   if (nova === null) return;
   if (nova.length < 4) { alert("A nova senha deve ter pelo menos 4 caracteres."); return; }
-  Store.definirSenhaGeral(nova);
-  U.toast("Senha alterada.");
+  Store.definirSenha(perfil, nova);
+  U.toast("Senha salva.");
+  App.render();
 };
 
 Actions.apagarTudo = () => {

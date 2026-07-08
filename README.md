@@ -71,12 +71,20 @@ e Escolas*, e é possível **adicionar novas origens** a qualquer momento (botã
 lado do campo). Há também o campo *Atingido pelas enchentes?* para o gráfico social.
 - **Backup**: exportação e importação de todos os dados em arquivo `.json`.
 
-**Senha de entrada**: no primeiro acesso o sistema pede para **criar a senha do
-instituto**; depois, ela é exigida sempre que o navegador é aberto. A tela de
-entrada tem atalhos para as áreas de professor e de profissional de saúde (PIN
-próprio, sem a senha geral). A troca de senha fica em Indicadores → Relatórios →
-Backup. *Proteção organizacional: os dados seguem no navegador; o login forte
-virá na versão 2.*
+**Níveis de acesso**: no primeiro uso o sistema pede a **senha do administrador**.
+O admin cria as senhas dos perfis **Secretaria** (operação completa, sem gerenciar
+logins) e **Usuário** (visualização de Painel, Agenda e Gráficos) em Indicadores →
+Relatórios → Segurança, e define os PINs de professores e profissionais nos
+respectivos cadastros. Chamada e Atendimentos são exclusivos de admin/secretaria;
+professores e profissionais acessam apenas o que é deles, com PIN próprio, pelos
+atalhos da tela de entrada. *Proteção organizacional: os dados seguem no navegador.*
+
+Outros recursos: modalidades Curso/Workshop/Palestra/**Imersão**; cadastro completo
+de professores (nascimento, CPF/CNPJ, endereço, PIX, início no instituto e anexos);
+área de **Funcionários e colaboradores** (aba Professores); aviso de
+**aniversariantes do mês** no Painel (todas as áreas); agenda com seletor de
+**ano e mês**; gráficos de condição apenas Gratuitos × Pagos (bolsistas contam
+como pagos).
 
 Na primeira visita, o botão **“Carregar dados de exemplo”** no Painel preenche o
 sistema com dados fictícios para conhecer as telas. Para começar de verdade, use

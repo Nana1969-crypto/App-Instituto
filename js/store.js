@@ -14,7 +14,11 @@ const Store = (() => {
                       //  fotos: [dataURL, ...] (até 8, comprimidas)}
     eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
                       //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
-    professores: [],  // {id, nome, telefone, email, formacao, experiencia}
+    professores: [],  // {id, nome, telefone, email, formacao, experiencia, nascimento, cpf, cnpj,
+                      //  endereco, bairro, cidade, cep, pix, dataInicio, arquivos:[{nome, dataUrl}], pinHash}
+    equipe: [],       // funcionários e colaboradores — {id, nome, tipo: funcionario|colaborador, funcao,
+                      //  telefone, email, nascimento, cpf, cnpj, endereco, bairro, cidade, cep,
+                      //  pix, dataInicio, arquivos:[{nome, dataUrl}], observacoes}
     turmas: [],       // {id, cursoId, professorId, nome, dataInicio, dataFim, horario, local, vagas, status}
     alunos: [],       // {id, nome, nascimento, cpf, telefone, email, endereco, bairro, cidade, cep,
                       //  responsavel, encaminhamento, atingidoEnchente, impactoEnchentes, rendaFamiliar,
@@ -69,20 +73,33 @@ const Store = (() => {
     if (!Array.isArray(db.profsaude)) db.profsaude = [];
     if (!Array.isArray(db.atendimentos)) db.atendimentos = [];
     if (!Array.isArray(db.eventos)) db.eventos = [];
+    if (!Array.isArray(db.equipe)) db.equipe = [];
     if (!Array.isArray(db.config.salas) || !db.config.salas.length) {
       db.config.salas = ["Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Auditório", "Hall Superior", "Hall de Entrada"];
     }
   }
 
-  /* senha geral de entrada (organizacional — os dados seguem no navegador) */
-  function temSenhaGeral() { return !!db.config.senhaGeralHash; }
-  function definirSenhaGeral(senha) {
-    db.config.senhaGeralHash = U.hashPin(String(senha));
+  /* senhas de acesso por nível (organizacional — os dados seguem no navegador)
+     admin: gerencia tudo, inclusive as senhas; secretaria: operação completa;
+     usuario: visualização básica. A senha antiga (senhaGeralHash) vira a de admin. */
+  const CAMPO_SENHA = { admin: "senhaGeralHash", secretaria: "senhaSecretariaHash", usuario: "senhaUsuarioHash" };
+
+  function temSenha(nivel) { return !!db.config[CAMPO_SENHA[nivel]]; }
+  function definirSenha(nivel, senha) {
+    db.config[CAMPO_SENHA[nivel]] = U.hashPin(String(senha));
     salvar();
   }
-  function conferirSenhaGeral(senha) {
-    return U.hashPin(String(senha)) === db.config.senhaGeralHash;
+  function removerSenha(nivel) {
+    delete db.config[CAMPO_SENHA[nivel]];
+    salvar();
   }
+  function conferirSenha(nivel, senha) {
+    return temSenha(nivel) && U.hashPin(String(senha)) === db.config[CAMPO_SENHA[nivel]];
+  }
+  /* compatibilidade com chamadas antigas */
+  function temSenhaGeral() { return temSenha("admin"); }
+  function definirSenhaGeral(senha) { definirSenha("admin", senha); }
+  function conferirSenhaGeral(senha) { return conferirSenha("admin", senha); }
 
   function addSala(nome) {
     const n = String(nome || "").trim();
@@ -423,29 +440,23 @@ const Store = (() => {
     return out;
   }
 
-  /* condição do aluno nos cursos: gratuito, bolsista ou pagante.
-     - pagante: tem matrícula em curso pago SEM bolsa
-     - bolsista: só cursa pago(s) com bolsa (ou pago com bolsa + gratuitos)
-     - gratuito: só cursos gratuitos (ou sem matrículas) */
+  /* condição do aluno nos cursos: apenas gratuito ou pago.
+     Quem cursa qualquer curso pago conta como "pago" (bolsistas incluídos). */
   function condicaoAluno(alunoId) {
-    let temPagoSemBolsa = false, temBolsa = false;
     for (const m of matriculasDoAluno(alunoId)) {
       const c = cursoDaTurma(m.turmaId);
-      if (c && c.tipoCurso === "pago") {
-        if (m.bolsa) temBolsa = true;
-        else temPagoSemBolsa = true;
-      }
+      if (c && c.tipoCurso === "pago") return "pago";
     }
-    if (temPagoSemBolsa) return "pagante";
-    if (temBolsa) return "bolsista";
     return "gratuito";
   }
 
-  /* gratuidade em todas as áreas: cursos (gratuitos, bolsistas, pagantes)
-     + atendimentos (pacientes gratuitos × pagos) */
+  /* gratuidade em todas as áreas: cursos (gratuitos × pagos, bolsistas contam
+     como pagos) + atendimentos (pacientes gratuitos × pagos) */
   function resumoGratuidade() {
-    const cond = { gratuito: [], bolsista: [], pagante: [] };
+    const cond = { gratuito: [], pago: [] };
     db.alunos.forEach(a => cond[condicaoAluno(a.id)].push(a));
+    const bolsistas = new Set(
+      db.matriculas.filter(m => m.bolsa).map(m => m.alunoId)).size;
 
     const pacGratuitos = db.pacientes.filter(p => p.tipoAtendimento !== "pago");
     const pacPagos = db.pacientes.length - pacGratuitos.length;
@@ -457,17 +468,34 @@ const Store = (() => {
 
     return {
       alunosGratuitos: cond.gratuito.length,
-      alunosBolsistas: cond.bolsista.length,
-      alunosPagantes: cond.pagante.length,
+      alunosPagos: cond.pago.length,
+      alunosBolsistas: bolsistas,
       cursosGratuitos, cursosPagos,
       pacGratuitos: pacGratuitos.length,
       pacPagos,
-      /* pessoas atendidas sem custo: alunos gratuitos + bolsistas + pacientes gratuitos */
-      pessoasGratuitas: cond.gratuito.length + cond.bolsista.length + pacGratuitos.length,
+      pessoasGratuitas: cond.gratuito.length + pacGratuitos.length,
       atendimentosGratuitos: atGratuitos.length,
       atGratuitosPorEspecialidade: contarPor(atGratuitos, "especialidade"),
-      enchenteGratuitos: contarEnchente([...cond.gratuito, ...cond.bolsista, ...pacGratuitos])
+      enchenteGratuitos: contarEnchente([...cond.gratuito, ...pacGratuitos])
     };
+  }
+
+  /* aniversariantes de um mês (1-12), em todas as áreas do instituto */
+  function aniversariantes(mes) {
+    const out = [];
+    const junta = (lista, origem) => {
+      for (const p of lista) {
+        const n = p.nascimento;
+        if (!n || Number(n.slice(5, 7)) !== mes) continue;
+        out.push({ nome: p.nome, origem, dia: Number(n.slice(8, 10)), nascimento: n });
+      }
+    };
+    junta(db.alunos, "Aluno");
+    junta(db.professores, "Professor");
+    junta(db.profsaude, "Profissional de saúde");
+    junta(db.equipe, "Equipe");
+    junta(db.pacientes, "Paciente");
+    return out.sort((a, b) => a.dia - b.dia || a.nome.localeCompare(b.nome, "pt-BR"));
   }
 
   /* ---------- consultas do módulo de atendimentos ---------- */
@@ -601,9 +629,9 @@ const Store = (() => {
   function carregarDemo() {
     const pinProfDemo = U.hashPin("1234"); // PIN dos professores de exemplo: 1234
     const profs = [
-      { nome: "Carlos Mendes", telefone: "(51) 99911-2233", email: "carlos@exemplo.com", formacao: "Administração", experiencia: "15 anos como consultor de negócios; ex-gestor do Sebrae regional.", pinHash: pinProfDemo },
-      { nome: "Fernanda Tavares", telefone: "(51) 99822-3344", email: "fernanda@exemplo.com", formacao: "Ciências Contábeis", experiencia: "Contadora, 9 anos de experiência com microempreendedores.", pinHash: pinProfDemo },
-      { nome: "Juliana Lopes", telefone: "(51) 99733-4455", email: "juliana@exemplo.com", formacao: "Publicidade e Propaganda", experiencia: "Estrategista digital, agência própria há 6 anos.", pinHash: pinProfDemo }
+      { nome: "Carlos Mendes", telefone: "(51) 99911-2233", email: "carlos@exemplo.com", formacao: "Administração", experiencia: "15 anos como consultor de negócios; ex-gestor do Sebrae regional.", pinHash: pinProfDemo, nascimento: "1978-07-15", dataInicio: "2024-08-01" },
+      { nome: "Fernanda Tavares", telefone: "(51) 99822-3344", email: "fernanda@exemplo.com", formacao: "Ciências Contábeis", experiencia: "Contadora, 9 anos de experiência com microempreendedores.", pinHash: pinProfDemo, nascimento: "1985-03-22", dataInicio: "2025-02-10" },
+      { nome: "Juliana Lopes", telefone: "(51) 99733-4455", email: "juliana@exemplo.com", formacao: "Publicidade e Propaganda", experiencia: "Estrategista digital, agência própria há 6 anos.", pinHash: pinProfDemo, nascimento: "1991-07-03", dataInicio: "2025-02-10" }
     ].map(p => upsert("professores", p));
 
     const nomesAlunos = [
@@ -755,6 +783,8 @@ const Store = (() => {
     presencaPorTurma, alunosPorProfessor, evolucaoFrequencia, porEncaminhamento, porImpactoEnchente,
     addEncaminhamento, addEspecialidade, addSala,
     temSenhaGeral, definirSenhaGeral, conferirSenhaGeral,
+    temSenha, definirSenha, removerSenha, conferirSenha,
+    aniversariantes,
     anosAgenda, eventosDoAno, conflitoSala,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,

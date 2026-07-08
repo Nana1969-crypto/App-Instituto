@@ -6,6 +6,7 @@ const TIPOS_EVENTO = [
   ["curso", "Curso", 1],
   ["workshop", "Workshop", 2],
   ["palestra", "Palestra", 5],
+  ["imersao", "Imersão", 6],
   ["evento", "Evento", 3],
   ["reuniao", "Reunião", 4],
   ["outro", "Outro", 8]
@@ -13,7 +14,7 @@ const TIPOS_EVENTO = [
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-let filtroEventos = { ano: new Date().getFullYear(), sala: "", tipo: "" };
+let filtroEventos = { ano: new Date().getFullYear(), mes: 0, sala: "", tipo: "" }; // mes 0 = todos
 
 function tipoEventoChip(tipo) {
   const t = TIPOS_EVENTO.find(x => x[0] === tipo) || TIPOS_EVENTO[5];
@@ -25,6 +26,7 @@ Views.agenda = () => {
   if (!anos.includes(filtroEventos.ano)) filtroEventos.ano = anos.includes(new Date().getFullYear()) ? new Date().getFullYear() : anos[0];
 
   let eventos = Store.eventosDoAno(filtroEventos.ano);
+  if (filtroEventos.mes) eventos = eventos.filter(e => Number(e.data.slice(5, 7)) === filtroEventos.mes);
   if (filtroEventos.sala) eventos = eventos.filter(e => e.sala === filtroEventos.sala);
   if (filtroEventos.tipo) eventos = eventos.filter(e => e.tipo === filtroEventos.tipo);
 
@@ -65,6 +67,10 @@ Views.agenda = () => {
   const selAno = `<select id="ag-ano" class="search-input" style="min-width:auto;">
     ${anos.map(a => `<option value="${a}" ${a === filtroEventos.ano ? "selected" : ""}>${a}</option>`).join("")}
   </select>`;
+  const selMes = `<select id="ag-mes" class="search-input" style="min-width:auto;">
+    <option value="0">Todos os meses</option>
+    ${MESES.map((m, i) => `<option value="${i + 1}" ${filtroEventos.mes === i + 1 ? "selected" : ""}>${m}</option>`).join("")}
+  </select>`;
   const selSala = `<select id="ag-sala" class="search-input" style="min-width:auto;">
     <option value="">Todas as salas</option>
     ${Store.config.salas.map(s => `<option value="${U.esc(s)}" ${filtroEventos.sala === s ? "selected" : ""}>${U.esc(s)}</option>`).join("")}
@@ -97,7 +103,7 @@ Views.agenda = () => {
     </div>
 
     <div class="panel">
-      <div class="head-actions">${selAno}${selSala}${selTipo}</div>
+      <div class="head-actions">${selAno}${selMes}${selSala}${selTipo}</div>
       ${usoHTML ? `<div style="margin-top:14px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:0.76rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Uso das salas em ${filtroEventos.ano}:</span>
         ${usoHTML}
@@ -234,6 +240,8 @@ Views.aposRender = (rota, param) => {
     });
   };
   liga("ag-ano", "ano");
+  const selM = document.getElementById("ag-mes");
+  if (selM) selM.addEventListener("change", () => { filtroEventos.mes = Number(selM.value); App.render(); });
   liga("ag-sala", "sala");
   liga("ag-tipo", "tipo");
 };

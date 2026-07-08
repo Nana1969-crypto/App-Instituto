@@ -6,7 +6,7 @@ const App = (() => {
     dashboard: () => Views.dashboard(),
     cursos: () => Views.cursos(),
     turmas: () => Views.turmas(),
-    professores: () => Views.professores(),
+    professores: sub => Views.professores(sub),
     alunos: () => Views.alunos(),
     aluno: id => Views.alunoDetalhe(id),
     chamada: id => Views.chamada(id),
@@ -20,27 +20,44 @@ const App = (() => {
     agenda: () => Views.agenda()
   };
 
-  const CHAVE_ADMIN = "bzn-admin-logado";
-  const adminLogado = () => sessionStorage.getItem(CHAVE_ADMIN) === "1";
+  const CHAVE_NIVEL = "bzn-nivel";
+  const nivel = () => sessionStorage.getItem(CHAVE_NIVEL) || "";
+
+  /* rotas liberadas para o nível "usuario" (visualização básica) */
+  function rotaPermitida(rota, param) {
+    const n = nivel();
+    if (n === "admin" || n === "secretaria") return true;
+    if (n === "usuario") {
+      if (rota === "dashboard" || rota === "agenda" || rota === "graficos") return true;
+      if (rota === "indicadores" && param !== "relatorios") return true;
+      return false;
+    }
+    return false;
+  }
 
   function render() {
     const hash = location.hash.replace(/^#\//, "") || "dashboard";
     const [rota, param] = hash.split("/");
     const fn = rotas[rota] || rotas.dashboard;
 
-    /* portão de entrada: sem a senha do instituto, só as áreas restritas
-       de professor e profissional de saúde (que têm PIN próprio) */
+    /* portão de entrada: sem login, só as áreas restritas de professor e
+       profissional de saúde (que têm PIN próprio) */
     const rotaLivre = rota === "professor" || (rota === "atendimentos" && param === "minha-area");
     const btnSair = document.getElementById("btn-sair-sistema");
-    if (!adminLogado() && !rotaLivre) {
+    if (!nivel() && !rotaLivre) {
       if (btnSair) btnSair.hidden = true;
       renderPortao();
       return;
     }
-    if (btnSair) btnSair.hidden = !adminLogado();
+    if (btnSair) {
+      btnSair.hidden = !nivel();
+      btnSair.textContent = nivel() ? "Sair (" + ({ admin: "admin", secretaria: "secretaria", usuario: "usuário" }[nivel()] || "") + ")" : "Sair";
+    }
 
+    /* nível usuário: menu enxuto e rotas bloqueadas */
     document.querySelectorAll("#nav-tabs a").forEach(a => {
       const r = a.dataset.route;
+      a.style.display = (nivel() === "usuario" && !rotaPermitida(r, "")) ? "none" : "";
       a.classList.toggle("active",
         r === rota ||
         (rota === "aluno" && r === "alunos") ||
@@ -49,6 +66,14 @@ const App = (() => {
         ((rota === "graficos" || rota === "relatorios") && r === "indicadores"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
+
+    if (!rotaLivre && !rotaPermitida(rota, param)) {
+      const view = document.getElementById("view");
+      view.innerHTML = `<div class="panel" style="max-width:440px; margin:40px auto 0;">
+        <div class="empty-note">Seu perfil (<strong>${U.esc(nivel())}</strong>) não tem acesso a esta área.<br>
+        Fale com a administração do instituto se precisar.</div></div>`;
+      return;
+    }
 
     const view = document.getElementById("view");
     view.innerHTML = fn(param) || "";
@@ -63,21 +88,30 @@ const App = (() => {
     window.scrollTo(0, 0);
   }
 
-  /* ---------- portão de entrada (senha do instituto) ---------- */
+  /* ---------- portão de entrada (perfis: admin, secretaria, usuário) ---------- */
   function renderPortao() {
     document.querySelectorAll("#nav-tabs a").forEach(a => a.classList.remove("active"));
     const view = document.getElementById("view");
-    const primeiraVez = !Store.temSenhaGeral();
+    const primeiraVez = !Store.temSenha("admin");
 
     view.innerHTML = `
       <div class="panel" style="max-width:440px; margin:40px auto 0;">
-        <h3 style="margin-bottom:2px;">${primeiraVez ? "Bem-vindo! Crie a senha do instituto" : "Acesso restrito"}</h3>
+        <h3 style="margin-bottom:2px;">${primeiraVez ? "Bem-vindo! Crie a senha do administrador" : "Acesso restrito"}</h3>
         <p class="panel-sub">${primeiraVez
-          ? "Esta senha protegerá o sistema. Guarde-a com a equipe da secretaria."
-          : "Digite a senha do instituto para entrar."}</p>
+          ? "Esta é a senha principal do sistema. Só o administrador cria e troca as demais senhas."
+          : "Escolha seu perfil e digite a senha."}</p>
         <div class="form-grid" style="grid-template-columns:1fr;">
+          ${primeiraVez ? "" : `
           <div class="field">
-            <label for="portao-senha">${primeiraVez ? "Nova senha (mínimo 4 caracteres)" : "Senha"}</label>
+            <label for="portao-perfil">Perfil</label>
+            <select id="portao-perfil">
+              <option value="admin">Administração</option>
+              <option value="secretaria">Secretaria</option>
+              <option value="usuario">Usuário (visualização)</option>
+            </select>
+          </div>`}
+          <div class="field">
+            <label for="portao-senha">${primeiraVez ? "Nova senha do administrador (mínimo 4 caracteres)" : "Senha"}</label>
             <input id="portao-senha" type="password" autocomplete="${primeiraVez ? "new-password" : "current-password"}">
           </div>
           ${primeiraVez ? `
@@ -96,27 +130,35 @@ const App = (() => {
       </div>`;
 
     const senha = document.getElementById("portao-senha");
+    const aviso = msg => {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.hidden = false;
+      setTimeout(() => { el.hidden = true; }, 2600);
+    };
     const entrar = () => {
       const v = senha.value;
       if (primeiraVez) {
         const conf = document.getElementById("portao-confirma").value;
         if (v.length < 4) { alert("A senha deve ter pelo menos 4 caracteres."); return; }
         if (v !== conf) { alert("As senhas não conferem. Digite igual nos dois campos."); return; }
-        Store.definirSenhaGeral(v);
-        sessionStorage.setItem(CHAVE_ADMIN, "1");
+        Store.definirSenha("admin", v);
+        sessionStorage.setItem(CHAVE_NIVEL, "admin");
         render();
         return;
       }
-      if (!Store.conferirSenhaGeral(v)) {
-        senha.value = "";
-        senha.focus();
-        const el = document.getElementById("toast");
-        el.textContent = "Senha incorreta.";
-        el.hidden = false;
-        setTimeout(() => { el.hidden = true; }, 2400);
+      const perfil = document.getElementById("portao-perfil").value;
+      if (!Store.temSenha(perfil)) {
+        alert("Este perfil ainda não tem senha cadastrada.\nPeça ao administrador para criar em Indicadores → Relatórios → Segurança.");
         return;
       }
-      sessionStorage.setItem(CHAVE_ADMIN, "1");
+      if (!Store.conferirSenha(perfil, v)) {
+        senha.value = "";
+        senha.focus();
+        aviso("Senha incorreta.");
+        return;
+      }
+      sessionStorage.setItem(CHAVE_NIVEL, perfil);
       render();
     };
     document.getElementById("portao-entrar").addEventListener("click", entrar);
@@ -170,7 +212,7 @@ const App = (() => {
   const btnSairSistema = document.getElementById("btn-sair-sistema");
   if (btnSairSistema) {
     btnSairSistema.addEventListener("click", () => {
-      sessionStorage.removeItem(CHAVE_ADMIN);
+      sessionStorage.removeItem(CHAVE_NIVEL);
       location.hash = "#/dashboard";
       render();
     });
@@ -179,5 +221,5 @@ const App = (() => {
   window.addEventListener("hashchange", render);
   window.addEventListener("DOMContentLoaded", render);
 
-  return { render, abrirModal, fecharModal };
+  return { render, abrirModal, fecharModal, nivel };
 })();
