@@ -17,22 +17,18 @@ const App = (() => {
     atendimentos: sub => Views.atendimentos(sub),
     paciente: id => Views.pacienteDetalhe(id),
     professor: () => Views.professorArea(),
-    agenda: () => Views.agenda()
+    agenda: () => Views.agenda(),
+    documentacao: sub => Views.documentacao(sub)
   };
 
   const CHAVE_NIVEL = "bzn-nivel";
   const nivel = () => sessionStorage.getItem(CHAVE_NIVEL) || "";
 
-  /* rotas liberadas para o nível "usuario" (visualização básica) */
-  function rotaPermitida(rota, param) {
+  /* permissões por nível. Hoje: admin e secretaria têm acesso completo
+     (só o admin gerencia senhas/PINs). */
+  function rotaPermitida() {
     const n = nivel();
-    if (n === "admin" || n === "secretaria") return true;
-    if (n === "usuario") {
-      if (rota === "dashboard" || rota === "agenda" || rota === "graficos") return true;
-      if (rota === "indicadores" && param !== "relatorios") return true;
-      return false;
-    }
-    return false;
+    return n === "admin" || n === "secretaria";
   }
 
   function render() {
@@ -51,13 +47,11 @@ const App = (() => {
     }
     if (btnSair) {
       btnSair.hidden = !nivel();
-      btnSair.textContent = nivel() ? "Sair (" + ({ admin: "admin", secretaria: "secretaria", usuario: "usuário" }[nivel()] || "") + ")" : "Sair";
+      btnSair.textContent = nivel() ? "Sair (" + ({ admin: "admin", secretaria: "secretaria" }[nivel()] || "") + ")" : "Sair";
     }
 
-    /* nível usuário: menu enxuto e rotas bloqueadas */
     document.querySelectorAll("#nav-tabs a").forEach(a => {
       const r = a.dataset.route;
-      a.style.display = (nivel() === "usuario" && !rotaPermitida(r, "")) ? "none" : "";
       a.classList.toggle("active",
         r === rota ||
         (rota === "aluno" && r === "alunos") ||
@@ -66,14 +60,6 @@ const App = (() => {
         ((rota === "graficos" || rota === "relatorios") && r === "indicadores"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
-
-    if (!rotaLivre && !rotaPermitida(rota, param)) {
-      const view = document.getElementById("view");
-      view.innerHTML = `<div class="panel" style="max-width:440px; margin:40px auto 0;">
-        <div class="empty-note">Seu perfil (<strong>${U.esc(nivel())}</strong>) não tem acesso a esta área.<br>
-        Fale com a administração do instituto se precisar.</div></div>`;
-      return;
-    }
 
     const view = document.getElementById("view");
     view.innerHTML = fn(param) || "";
@@ -107,7 +93,6 @@ const App = (() => {
             <select id="portao-perfil">
               <option value="admin">Administração</option>
               <option value="secretaria">Secretaria</option>
-              <option value="usuario">Usuário (visualização)</option>
             </select>
           </div>`}
           <div class="field">

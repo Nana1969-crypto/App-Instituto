@@ -234,6 +234,7 @@ function viewProfSaude() {
           ${U.esc(p.telefone || "")}${p.telefone && p.email ? " · " : ""}${U.esc(p.email || "")}<br>
           ${qtd} ${U.plural(qtd, "atendimento registrado", "atendimentos registrados")}
         </div>
+        ${(p.arquivos || []).length ? `<div class="cross-chips">${Anexos.links(p.arquivos)}</div>` : ""}
       </div>`;
   }).join("");
 
@@ -305,6 +306,7 @@ function abrirFormProfSaude(p) {
           <input id="fps-pin" name="pinNovo" type="password" inputmode="numeric" minlength="4" maxlength="6"
             placeholder="${p.pinHash ? "já cadastrado — preencha para trocar" : "defina o PIN do profissional"}" autocomplete="new-password">
         </div>` : ""}
+        ${Anexos.campoHTML("Documentos (PDF)", "Registro no conselho, contrato, comprovantes, etc. Até 5 arquivos.")}
       </div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
@@ -313,20 +315,27 @@ function abrirFormProfSaude(p) {
     </form>`, dados => {
     if (!dados.nome.trim()) return false;
     const { pinNovo, ...resto } = dados;
-    const obj = { id: p.id || undefined, ...resto, nome: dados.nome.trim(), pinHash: p.pinHash || "" };
+    const obj = { id: p.id || undefined, ...resto, nome: dados.nome.trim(), pinHash: p.pinHash || "", arquivos: Anexos.lista() };
     if (pinNovo && pinNovo.trim()) {
       if (!/^\d{4,6}$/.test(pinNovo.trim())) { alert("O PIN deve ter de 4 a 6 dígitos numéricos."); return false; }
       obj.pinHash = U.hashPin(pinNovo.trim());
     }
-    Store.upsert("profsaude", obj);
+    try {
+      Store.upsert("profsaude", obj);
+    } catch (e) {
+      alert("Não foi possível salvar: o armazenamento do navegador está cheio.\nRemova algum anexo e tente novamente.");
+      return false;
+    }
     U.toast("Profissional salvo.");
     App.render();
   });
+  Anexos.iniciar(p.arquivos, 5);
+  Anexos.ligar();
 }
 
 Actions.novoProfSaude = () => abrirFormProfSaude({
   nome: "", especialidade: Store.config.especialidades[0], crp: "", crm: "", registro: "",
-  dias: "", horarios: "", telefone: "", email: "", pinHash: ""
+  dias: "", horarios: "", telefone: "", email: "", pinHash: "", arquivos: []
 });
 Actions.editarProfSaude = id => abrirFormProfSaude(Store.get("profsaude", id));
 Actions.excluirProfSaude = id => {

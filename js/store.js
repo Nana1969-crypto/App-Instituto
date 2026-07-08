@@ -14,6 +14,9 @@ const Store = (() => {
                       //  fotos: [dataURL, ...] (até 8, comprimidas)}
     eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
                       //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
+    documentos: [],   // {id, categoria: documento|formulario, titulo, assunto, data,
+                      //  tipo: arquivo|link, arquivo:{nome,dataUrl}, url}
+    linksImagens: [], // {id, assunto, titulo, url, obs}
     professores: [],  // {id, nome, telefone, email, formacao, experiencia, nascimento, cpf, cnpj,
                       //  endereco, bairro, cidade, cep, pix, dataInicio, arquivos:[{nome, dataUrl}], pinHash}
     equipe: [],       // funcionários e colaboradores — {id, nome, tipo: funcionario|colaborador, funcao,
@@ -74,6 +77,8 @@ const Store = (() => {
     if (!Array.isArray(db.atendimentos)) db.atendimentos = [];
     if (!Array.isArray(db.eventos)) db.eventos = [];
     if (!Array.isArray(db.equipe)) db.equipe = [];
+    if (!Array.isArray(db.documentos)) db.documentos = [];
+    if (!Array.isArray(db.linksImagens)) db.linksImagens = [];
     if (!Array.isArray(db.config.salas) || !db.config.salas.length) {
       db.config.salas = ["Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Auditório", "Hall Superior", "Hall de Entrada"];
     }
@@ -82,7 +87,7 @@ const Store = (() => {
   /* senhas de acesso por nível (organizacional — os dados seguem no navegador)
      admin: gerencia tudo, inclusive as senhas; secretaria: operação completa;
      usuario: visualização básica. A senha antiga (senhaGeralHash) vira a de admin. */
-  const CAMPO_SENHA = { admin: "senhaGeralHash", secretaria: "senhaSecretariaHash", usuario: "senhaUsuarioHash" };
+  const CAMPO_SENHA = { admin: "senhaGeralHash", secretaria: "senhaSecretariaHash" };
 
   function temSenha(nivel) { return !!db.config[CAMPO_SENHA[nivel]]; }
   function definirSenha(nivel, senha) {

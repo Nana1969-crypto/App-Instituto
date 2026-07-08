@@ -153,6 +153,11 @@ Views.alunoDetalhe = id => {
           ${item("Necessidades de apoio", U.esc(a.necessidades))}
           ${item("Observações", U.esc(a.observacoes))}
         </div>
+        ${(a.termos || []).length ? `
+          <div style="margin-top:14px;">
+            <div class="k" style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:6px;">Termos e documentos</div>
+            <div class="cross-chips">${Anexos.links(a.termos)}</div>
+          </div>` : ""}
       </div>
     </div>
 
@@ -262,6 +267,7 @@ function abrirFormAluno(a) {
           <label for="fa-obs">Observações</label>
           <textarea id="fa-obs" name="observacoes">${U.esc(a.observacoes)}</textarea>
         </div>
+        ${Anexos.campoHTML("Termos e documentos (PDF)", "Termo de consentimento, autorização de imagem, etc. Até 5 arquivos.")}
       </div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
@@ -269,18 +275,26 @@ function abrirFormAluno(a) {
       </div>
     </form>`, dados => {
     if (!dados.nome.trim()) return false;
-    const salvo = Store.upsert("alunos", { id: a.id || undefined, ...dados, nome: dados.nome.trim() });
+    let salvo;
+    try {
+      salvo = Store.upsert("alunos", { id: a.id || undefined, ...dados, nome: dados.nome.trim(), termos: Anexos.lista() });
+    } catch (e) {
+      alert("Não foi possível salvar: o armazenamento do navegador está cheio.\nRemova algum anexo e tente novamente.");
+      return false;
+    }
     U.toast("Aluno salvo.");
     if (!a.id) location.hash = "#/aluno/" + salvo.id;
     else App.render();
   });
+  Anexos.iniciar(a.termos, 5);
+  Anexos.ligar();
 }
 
 Actions.novoAluno = () => abrirFormAluno({
   nome: "", nascimento: "", cpf: "", telefone: "", email: "",
   endereco: "", bairro: "", cidade: "", cep: "",
   responsavel: "", encaminhamento: "", atingidoEnchente: "", impactoEnchentes: "",
-  rendaFamiliar: "", beneficios: "", moradiaAtual: "", necessidades: "", observacoes: ""
+  rendaFamiliar: "", beneficios: "", moradiaAtual: "", necessidades: "", observacoes: "", termos: []
 });
 
 /* adiciona uma nova origem de encaminhamento sem fechar o formulário do aluno */

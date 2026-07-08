@@ -114,11 +114,11 @@ Views.relatorios = () => {
       <div class="head-actions">
         <button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>
         <button class="btn" data-action="senhaPerfil" data-id="secretaria">${Store.temSenha("secretaria") ? "Trocar" : "Criar"} senha da secretaria</button>
-        <button class="btn" data-action="senhaPerfil" data-id="usuario">${Store.temSenha("usuario") ? "Trocar" : "Criar"} senha de usuário</button>
       </div>
       <div class="combo-note" style="margin-top:14px;">
-        <strong>Admin</strong>: tudo, inclusive senhas · <strong>Secretaria</strong>: operação completa, sem gerenciar logins ·
-        <strong>Usuário</strong>: visualização do Painel, Agenda e Gráficos, sem dados pessoais.
+        <strong>Admin</strong>: acesso total, inclusive gerenciar senhas e PINs ·
+        <strong>Secretaria</strong>: operação completa, sem gerenciar logins.
+        Professores e profissionais de saúde entram com PIN próprio, vendo apenas o que é deles.
       </div>
     </div>` : ""}
   `;
@@ -232,7 +232,7 @@ Actions.backupImportar = () => {
 /* criar/trocar senha de um perfil — sempre confirmando a senha do admin antes */
 Actions.senhaPerfil = perfil => {
   if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera senhas."); return; }
-  const rotulo = { admin: "do administrador", secretaria: "da secretaria", usuario: "de usuário" }[perfil];
+  const rotulo = { admin: "do administrador", secretaria: "da secretaria" }[perfil];
   const atual = prompt("Confirme a senha ATUAL do administrador:");
   if (atual === null) return;
   if (!Store.conferirSenha("admin", atual)) { alert("Senha do administrador incorreta."); return; }

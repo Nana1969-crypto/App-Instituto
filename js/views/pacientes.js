@@ -158,6 +158,11 @@ Views.pacienteDetalhe = id => {
           ${item("Atendimento", financeiro)}
           ${item("Observações", U.esc(p.observacoes))}
         </div>
+        ${(p.termos || []).length ? `
+          <div style="margin-top:14px;">
+            <div class="k" style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:6px;">Termos e documentos</div>
+            <div class="cross-chips">${Anexos.links(p.termos)}</div>
+          </div>` : ""}
       </div>
     </div>
 
@@ -296,6 +301,7 @@ function abrirFormPaciente(p) {
           <label for="fpc-obs">Observações</label>
           <textarea id="fpc-obs" name="observacoes">${U.esc(p.observacoes)}</textarea>
         </div>
+        ${Anexos.campoHTML("Termos e documentos (PDF)", "Termo de consentimento, contrato terapêutico, etc. Até 5 arquivos.")}
       </div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
@@ -303,16 +309,25 @@ function abrirFormPaciente(p) {
       </div>
     </form>`, dados => {
     if (!dados.nome.trim()) return false;
-    const salvo = Store.upsert("pacientes", {
-      id: p.id || undefined, ...dados,
-      nome: dados.nome.trim(),
-      cobranca: dados.tipoAtendimento === "pago" ? (dados.cobranca || "consulta") : "",
-      valor: dados.tipoAtendimento === "pago" ? (Number(dados.valor) || 0) : 0
-    });
+    let salvo;
+    try {
+      salvo = Store.upsert("pacientes", {
+        id: p.id || undefined, ...dados,
+        nome: dados.nome.trim(),
+        cobranca: dados.tipoAtendimento === "pago" ? (dados.cobranca || "consulta") : "",
+        valor: dados.tipoAtendimento === "pago" ? (Number(dados.valor) || 0) : 0,
+        termos: Anexos.lista()
+      });
+    } catch (e) {
+      alert("Não foi possível salvar: o armazenamento do navegador está cheio.\nRemova algum anexo e tente novamente.");
+      return false;
+    }
     U.toast("Paciente salvo.");
     if (!p.id) location.hash = "#/paciente/" + salvo.id;
     else App.render();
   });
+  Anexos.iniciar(p.termos, 5);
+  Anexos.ligar();
 
   /* habilita/desabilita os campos financeiros conforme o tipo */
   const selTipo = document.getElementById("fpc-tipo");
@@ -328,7 +343,7 @@ Actions.novoPaciente = () => abrirFormPaciente({
   telefone: "", whatsapp: "", email: "", responsavel: "", escolaridade: "", escola: "",
   profissao: "", estadoCivil: "", encaminhadoPor: "", situacaoSocio: "", beneficios: "",
   atingidoEnchente: "", impactoEnchentes: "",
-  observacoes: "", tipoAtendimento: "gratuito", cobranca: "", valor: ""
+  observacoes: "", tipoAtendimento: "gratuito", cobranca: "", valor: "", termos: []
 });
 Actions.editarPaciente = id => abrirFormPaciente(Store.get("pacientes", id));
 Actions.verPaciente = id => { location.hash = "#/paciente/" + id; };
