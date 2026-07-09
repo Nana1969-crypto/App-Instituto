@@ -256,6 +256,10 @@ Views.seguranca = () => {
       "A senha principal do sistema. Guarde em local seguro — quem a tem controla todos os acessos.",
       `<button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>`)}
 
+    ${item("Pergunta de segurança",
+      `Protege a recuperação de senha na tela de entrada: quem clicar em "Esqueci a senha" precisa acertar a resposta. ${Store.temPerguntaSeguranca() ? `<strong>Status: cadastrada ✓</strong> — "${U.esc(Store.perguntaSeguranca())}"` : "<strong>Status: não cadastrada — recomendado criar</strong>"}`,
+      `<button class="btn accent" data-action="perguntaSeguranca">${Store.temPerguntaSeguranca() ? "Trocar" : "Cadastrar"} pergunta de segurança</button>`)}
+
     ${item("Senha da secretaria",
       `Compartilhada pela equipe da secretaria. Operação completa (cadastros, chamada, atendimentos, agenda, relatórios), sem gerenciar logins nem acessar o financeiro. ${Store.temSenha("secretaria") ? "<strong>Status: criada ✓</strong>" : "<strong>Status: ainda não criada</strong>"}`,
       `<button class="btn accent" data-action="senhaPerfil" data-id="secretaria">${Store.temSenha("secretaria") ? "Trocar" : "Criar"} senha da secretaria</button>`)}
@@ -303,6 +307,19 @@ Actions.senhaPerfil = perfil => {
   if (nova !== conf) { alert("As senhas não conferem. Nada foi alterado."); return; }
   Store.definirSenha(perfil, nova);
   U.toast(`Senha ${rotulo} salva.`);
+  App.render();
+};
+
+Actions.perguntaSeguranca = () => {
+  if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera isto."); return; }
+  const pergunta = prompt("Pergunta de segurança:\n(ex.: Qual o nome do seu primeiro cachorro?)", Store.perguntaSeguranca());
+  if (pergunta === null) return;
+  if (!pergunta.trim()) { alert("Digite uma pergunta."); return; }
+  const resposta = prompt("Resposta secreta:\n(não diferencia maiúsculas/acentos)");
+  if (resposta === null) return;
+  if (!resposta.trim()) { alert("Digite a resposta."); return; }
+  Store.definirPerguntaSeguranca(pergunta, resposta);
+  U.toast("Pergunta de segurança salva.");
   App.render();
 };
 

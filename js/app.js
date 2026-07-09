@@ -163,7 +163,14 @@ const App = (() => {
     const esqueci = document.getElementById("portao-esqueci");
     if (esqueci) esqueci.addEventListener("click", ev => {
       ev.preventDefault();
-      if (!confirm("Redefinir a senha do administrador?\n\nTodos os dados (alunos, financeiro, etc.) são mantidos — só a senha do admin será trocada. As demais senhas e PINs continuam válidos.\n\nContinuar?")) return;
+      /* se houver pergunta de segurança, exige a resposta antes de redefinir */
+      if (Store.temPerguntaSeguranca()) {
+        const resp = prompt("Pergunta de segurança:\n\n" + Store.perguntaSeguranca());
+        if (resp === null) return;
+        if (!Store.conferirResposta(resp)) { alert("Resposta incorreta. A senha não foi alterada."); return; }
+      } else {
+        if (!confirm("Redefinir a senha do administrador?\n\nTodos os dados são mantidos — só a senha do admin será trocada.\n\nDica: cadastre uma pergunta de segurança em ⚙ Logins para proteger esta recuperação.\n\nContinuar?")) return;
+      }
       const nova = prompt("Digite a NOVA senha do administrador (mínimo 4 caracteres):");
       if (nova === null) return;
       if (nova.trim().length < 4) { alert("A senha deve ter pelo menos 4 caracteres."); return; }

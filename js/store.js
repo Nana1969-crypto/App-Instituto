@@ -109,6 +109,23 @@ const Store = (() => {
   function conferirSenha(nivel, senha) {
     return temSenha(nivel) && U.hashPin(String(senha)) === db.config[CAMPO_SENHA[nivel]];
   }
+  /* pergunta de segurança — protege a recuperação da senha do admin.
+     A resposta é guardada como hash, normalizada (minúsculas, sem acentos/espaços). */
+  function normalizaResposta(s) {
+    return String(s || "").trim().toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+  }
+  function temPerguntaSeguranca() { return !!(db.config.perguntaSeg && db.config.respostaSegHash); }
+  function perguntaSeguranca() { return db.config.perguntaSeg || ""; }
+  function definirPerguntaSeguranca(pergunta, resposta) {
+    db.config.perguntaSeg = String(pergunta || "").trim();
+    db.config.respostaSegHash = U.hashPin(normalizaResposta(resposta));
+    salvar();
+  }
+  function conferirResposta(resposta) {
+    return temPerguntaSeguranca() && U.hashPin(normalizaResposta(resposta)) === db.config.respostaSegHash;
+  }
+
   /* compatibilidade com chamadas antigas */
   function temSenhaGeral() { return temSenha("admin"); }
   function definirSenhaGeral(senha) { definirSenha("admin", senha); }
@@ -779,6 +796,9 @@ const Store = (() => {
     }
 
     /* --- módulo de atendimentos --- */
+    // pergunta de segurança de exemplo (troque pela sua na página Segurança)
+    definirPerguntaSeguranca("Qual o nome do seu primeiro cachorro?", "Bolinha");
+
     const pinDemo = U.hashPin("1234"); // PIN dos profissionais de exemplo: 1234
     const profSaude = [
       { nome: "Dra. Helena Souza", especialidade: "Psicologia", crp: "07/12345", crm: "", registro: "", dias: "Seg, Qua e Sex", horarios: "13h–18h", telefone: "(51) 99611-2020", email: "helena@exemplo.com", pinHash: pinDemo },
@@ -875,6 +895,7 @@ const Store = (() => {
     temSenhaGeral, definirSenhaGeral, conferirSenhaGeral,
     temSenha, definirSenha, removerSenha, conferirSenha,
     aniversariantes,
+    temPerguntaSeguranca, perguntaSeguranca, definirPerguntaSeguranca, conferirResposta,
     temPinFinanceiro, definirPinFinanceiro, conferirPinFinanceiro,
     addCategoriaFin, importarLancamentos, resumoFin, anosFin,
     anosAgenda, eventosDoAno, conflitoSala,
