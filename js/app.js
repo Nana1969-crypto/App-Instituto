@@ -20,6 +20,8 @@ const App = (() => {
     agenda: () => Views.agenda(),
     documentacao: sub => Views.documentacao(sub),
     financeiro: sub => Views.financeiro(sub),
+    assistencia: sub => Views.assistencia(sub),
+    assistido: id => Views.assistidoDetalhe(id),
     seguranca: () => Views.seguranca()
   };
 
@@ -43,7 +45,8 @@ const App = (() => {
     /* rotas com controle próprio: PIN de professor, de profissional e do financeiro */
     const rotaLivre = rota === "professor" ||
       (rota === "atendimentos" && param === "minha-area") ||
-      rota === "financeiro";
+      rota === "financeiro" ||
+      rota === "assistencia" || rota === "assistido";
     const btnSair = document.getElementById("btn-sair-sistema");
     if (!nivel() && !rotaLivre) {
       if (btnSair) btnSair.hidden = true;
@@ -64,6 +67,7 @@ const App = (() => {
         (rota === "aluno" && r === "alunos") ||
         (rota === "paciente" && r === "atendimentos") ||
         (rota === "professor" && r === "professores") ||
+        (rota === "assistido" && r === "assistencia") ||
         ((rota === "graficos" || rota === "relatorios") && r === "indicadores"));
     });
     document.getElementById("nav-tabs").classList.remove("open");
@@ -110,6 +114,14 @@ const App = (() => {
           <div class="field">
             <label for="portao-confirma">Confirme a senha</label>
             <input id="portao-confirma" type="password" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label for="portao-pergunta">Pergunta de segurança (obrigatória — protege a recuperação da senha)</label>
+            <input id="portao-pergunta" placeholder="ex.: Qual o nome do seu primeiro cachorro?">
+          </div>
+          <div class="field">
+            <label for="portao-resposta">Resposta secreta</label>
+            <input id="portao-resposta" placeholder="só o administrador deve saber">
           </div>` : ""}
         </div>
         <div class="form-actions">
@@ -118,6 +130,8 @@ const App = (() => {
         <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:0.82rem; display:flex; flex-direction:column; gap:6px;">
           <a href="#/professor">&#128274; Sou professor — entrar com meu PIN</a>
           <a href="#/atendimentos/minha-area">&#128274; Sou profissional de saúde — entrar com meu PIN</a>
+          <a href="#/assistencia">&#128274; Sou da assistência social — entrar com meu PIN</a>
+          <a href="#/financeiro">&#128274; Sou gestor(a) financeiro(a) — entrar com meu PIN</a>
           ${primeiraVez ? "" : `<a href="#" id="portao-esqueci" style="color:var(--text-muted);">Esqueci a senha do administrador</a>`}
         </div>
       </div>`;
@@ -133,9 +147,13 @@ const App = (() => {
       const v = senha.value;
       if (primeiraVez) {
         const conf = document.getElementById("portao-confirma").value;
+        const pergunta = document.getElementById("portao-pergunta").value.trim();
+        const resposta = document.getElementById("portao-resposta").value.trim();
         if (v.length < 4) { alert("A senha deve ter pelo menos 4 caracteres."); return; }
         if (v !== conf) { alert("As senhas não conferem. Digite igual nos dois campos."); return; }
+        if (!pergunta || !resposta) { alert("Cadastre a pergunta de segurança e a resposta.\nElas protegem a recuperação da senha — sem elas, qualquer pessoa poderia redefinir seu acesso."); return; }
         Store.definirSenha("admin", v);
+        Store.definirPerguntaSeguranca(pergunta, resposta);
         sessionStorage.setItem(CHAVE_NIVEL, "admin");
         render();
         return;
@@ -163,14 +181,15 @@ const App = (() => {
     const esqueci = document.getElementById("portao-esqueci");
     if (esqueci) esqueci.addEventListener("click", ev => {
       ev.preventDefault();
-      /* se houver pergunta de segurança, exige a resposta antes de redefinir */
-      if (Store.temPerguntaSeguranca()) {
-        const resp = prompt("Pergunta de segurança:\n\n" + Store.perguntaSeguranca());
-        if (resp === null) return;
-        if (!Store.conferirResposta(resp)) { alert("Resposta incorreta. A senha não foi alterada."); return; }
-      } else {
-        if (!confirm("Redefinir a senha do administrador?\n\nTodos os dados são mantidos — só a senha do admin será trocada.\n\nDica: cadastre uma pergunta de segurança em ⚙ Logins para proteger esta recuperação.\n\nContinuar?")) return;
+      /* a recuperação SÓ funciona com a pergunta de segurança — sem ela,
+         não permitimos redefinir (evita que qualquer pessoa troque o acesso) */
+      if (!Store.temPerguntaSeguranca()) {
+        alert("A recuperação está bloqueada porque não há pergunta de segurança cadastrada.\n\nEntre com a sua senha e cadastre a pergunta em ⚙ Logins. Se realmente perdeu a senha, será preciso apoio técnico neste computador.");
+        return;
       }
+      const resp = prompt("Pergunta de segurança:\n\n" + Store.perguntaSeguranca());
+      if (resp === null) return;
+      if (!Store.conferirResposta(resp)) { alert("Resposta incorreta. A senha não foi alterada."); return; }
       const nova = prompt("Digite a NOVA senha do administrador (mínimo 4 caracteres):");
       if (nova === null) return;
       if (nova.trim().length < 4) { alert("A senha deve ter pelo menos 4 caracteres."); return; }

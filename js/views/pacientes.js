@@ -155,6 +155,8 @@ Views.pacienteDetalhe = id => {
           ${item("Benefícios sociais", U.esc(p.beneficios))}
           ${item("Atingido pelas enchentes", p.atingidoEnchente === "sim" ? "Sim" : p.atingidoEnchente === "nao" ? "Não" : "")}
           ${item("Impacto das enchentes", U.esc(p.impactoEnchentes))}
+          ${item("Necessidades especiais", p.necessidadesEspeciais === "sim" ? "Sim" : p.necessidadesEspeciais === "nao" ? "Não" : "")}
+          ${item("Descrição das necessidades", U.esc(p.necessidadesDesc))}
           ${item("Atendimento", financeiro)}
           ${item("Observações", U.esc(p.observacoes))}
         </div>
@@ -267,6 +269,18 @@ function abrirFormPaciente(p) {
           <input id="fpc-benef" name="beneficios" placeholder="ex.: Bolsa Família, BPC" value="${U.esc(p.beneficios)}">
         </div>
         <div class="field">
+          <label for="fpc-ne">É portador de necessidades especiais?</label>
+          <select id="fpc-ne" name="necessidadesEspeciais">
+            <option value="" ${!p.necessidadesEspeciais ? "selected" : ""}>Não informado</option>
+            <option value="sim" ${p.necessidadesEspeciais === "sim" ? "selected" : ""}>Sim</option>
+            <option value="nao" ${p.necessidadesEspeciais === "nao" ? "selected" : ""}>Não</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="fpc-nedesc">Descreva as necessidades especiais</label>
+          <textarea id="fpc-nedesc" name="necessidadesDesc" placeholder="Condição, apoios necessários, laudos, etc.">${U.esc(p.necessidadesDesc)}</textarea>
+        </div>
+        <div class="field">
           <label for="fpc-ench">Atingido pelas enchentes?</label>
           <select id="fpc-ench" name="atingidoEnchente">
             <option value="" ${!p.atingidoEnchente ? "selected" : ""}>Não informado</option>
@@ -342,7 +356,7 @@ Actions.novoPaciente = () => abrirFormPaciente({
   nome: "", cpf: "", rg: "", nascimento: "", sexo: "", endereco: "", bairro: "", cidade: "",
   telefone: "", whatsapp: "", email: "", responsavel: "", escolaridade: "", escola: "",
   profissao: "", estadoCivil: "", encaminhadoPor: "", situacaoSocio: "", beneficios: "",
-  atingidoEnchente: "", impactoEnchentes: "",
+  atingidoEnchente: "", impactoEnchentes: "", necessidadesEspeciais: "", necessidadesDesc: "",
   observacoes: "", tipoAtendimento: "gratuito", cobranca: "", valor: "", termos: []
 });
 Actions.editarPaciente = id => abrirFormPaciente(Store.get("pacientes", id));

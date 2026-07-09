@@ -268,6 +268,10 @@ Views.seguranca = () => {
       `Dá acesso exclusivo à aba Financeiro (extrato, Guru, notas fiscais e relatórios). ${Store.temPinFinanceiro() ? "<strong>Status: criado ✓</strong>" : "<strong>Status: ainda não criado</strong>"}`,
       `<button class="btn accent" data-action="pinFinanceiro">${Store.temPinFinanceiro() ? "Trocar" : "Criar"} PIN do gestor financeiro</button>`)}
 
+    ${item("PIN da assistência social",
+      `Dá acesso exclusivo à aba Assistência (atendidos, lista de espera, agenda interna e legislação). ${Store.temPinAssistencia() ? "<strong>Status: criado ✓</strong>" : "<strong>Status: ainda não criado</strong>"}`,
+      `<button class="btn accent" data-action="pinAssistencia">${Store.temPinAssistencia() ? "Trocar" : "Criar"} PIN da assistência social</button>`)}
+
     ${item("PINs dos professores",
       "Cada professor tem um PIN individual, definido no cadastro dele (o campo só aparece para o admin). Com o PIN, ele acessa apenas as próprias turmas e chamadas.",
       `<a class="btn ghost" href="#/professores" style="text-decoration:none;">Abrir cadastro de professores &rarr;</a>`)}
@@ -320,6 +324,16 @@ Actions.perguntaSeguranca = () => {
   if (!resposta.trim()) { alert("Digite a resposta."); return; }
   Store.definirPerguntaSeguranca(pergunta, resposta);
   U.toast("Pergunta de segurança salva.");
+  App.render();
+};
+
+Actions.pinAssistencia = () => {
+  if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera o PIN."); return; }
+  const pin = prompt("Novo PIN da assistência social (4 a 6 dígitos):");
+  if (pin === null) return;
+  if (!/^\d{4,6}$/.test(pin.trim())) { alert("O PIN deve ter de 4 a 6 dígitos numéricos."); return; }
+  Store.definirPinAssistencia(pin.trim());
+  U.toast("PIN da assistência social salvo.");
   App.render();
 };
 

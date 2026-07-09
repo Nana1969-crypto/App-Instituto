@@ -17,6 +17,19 @@ const Store = (() => {
     lancamentos: [],  // financeiro — {id, data, descricao, valor (positivo=entrada, negativo=saída),
                       //  origem: sicoob|guru|manual, categoria, obs, chave (p/ evitar duplicados),
                       //  anexos: [{nome, dataUrl}] (notas fiscais/comprovantes)}
+
+    /* módulo de assistência social */
+    assistidos: [],   // mesmos dados dos pacientes + necessidades especiais e documentos
+                      // {id, nome, cpf, rg, nascimento, sexo, endereco, bairro, cidade, telefone,
+                      //  whatsapp, email, responsavel, escolaridade, escola, profissao, estadoCivil,
+                      //  encaminhadoPor, situacaoSocio, beneficios, atingidoEnchente, impactoEnchentes,
+                      //  necessidadesEspeciais: sim|nao|"", necessidadesDesc, observacoes,
+                      //  documentos: [{nome, dataUrl}]}
+    listaEspera: [],  // {id, nome, telefone, area, dataEntrada, obs,
+                      //  status: aguardando|chamado|atendido|desistiu}
+    compromissosAS: [],// agenda interna — {id, data, hora, titulo, assistidoId, responsavel, obs,
+                      //  status: agendado|realizado|cancelado}
+    legislacaoAS: [], // {id, titulo, tipo: link|arquivo, url, arquivo:{nome,dataUrl}, obs}
     documentos: [],   // {id, categoria: documento|formulario, titulo, assunto, data,
                       //  tipo: arquivo|link, arquivo:{nome,dataUrl}, url}
     linksImagens: [], // {id, assunto, titulo, url, obs}
@@ -81,6 +94,13 @@ const Store = (() => {
     if (!Array.isArray(db.eventos)) db.eventos = [];
     if (!Array.isArray(db.equipe)) db.equipe = [];
     if (!Array.isArray(db.lancamentos)) db.lancamentos = [];
+    if (!Array.isArray(db.assistidos)) db.assistidos = [];
+    if (!Array.isArray(db.listaEspera)) db.listaEspera = [];
+    if (!Array.isArray(db.compromissosAS)) db.compromissosAS = [];
+    if (!Array.isArray(db.legislacaoAS)) db.legislacaoAS = [];
+    if (!Array.isArray(db.config.areasEspera) || !db.config.areasEspera.length) {
+      db.config.areasEspera = [...db.config.especialidades, "Assistência Social", "Cursos"];
+    }
     if (!Array.isArray(db.config.categoriasFin) || !db.config.categoriasFin.length) {
       db.config.categoriasFin = ["Doações", "Mensalidades", "Vendas Guru", "Subvenções",
         "Aluguel", "Materiais", "Pessoal", "Contas (luz, água, internet)", "Outros"];
@@ -130,6 +150,41 @@ const Store = (() => {
   function temSenhaGeral() { return temSenha("admin"); }
   function definirSenhaGeral(senha) { definirSenha("admin", senha); }
   function conferirSenhaGeral(senha) { return conferirSenha("admin", senha); }
+
+  /* ---------- assistência social ---------- */
+
+  function temPinAssistencia() { return !!db.config.pinAssistenciaHash; }
+  function definirPinAssistencia(pin) {
+    db.config.pinAssistenciaHash = U.hashPin(String(pin));
+    salvar();
+  }
+  function conferirPinAssistencia(pin) {
+    return temPinAssistencia() && U.hashPin(String(pin)) === db.config.pinAssistenciaHash;
+  }
+
+  function addAreaEspera(nome) {
+    const n = String(nome || "").trim();
+    if (!n) return false;
+    if (!db.config.areasEspera.some(x => x.toLowerCase() === n.toLowerCase())) {
+      db.config.areasEspera.push(n);
+      salvar();
+    }
+    return n;
+  }
+
+  /* lista de espera agrupada por área, em ordem de chegada */
+  function esperaPorArea() {
+    const grupos = new Map();
+    const aguardando = db.listaEspera
+      .filter(e => e.status === "aguardando" || e.status === "chamado")
+      .sort((a, b) => (a.dataEntrada || "").localeCompare(b.dataEntrada || ""));
+    for (const e of aguardando) {
+      const area = e.area || "Sem área";
+      if (!grupos.has(area)) grupos.set(area, []);
+      grupos.get(area).push(e);
+    }
+    return grupos;
+  }
 
   /* ---------- financeiro ---------- */
 
@@ -896,6 +951,8 @@ const Store = (() => {
     temSenha, definirSenha, removerSenha, conferirSenha,
     aniversariantes,
     temPerguntaSeguranca, perguntaSeguranca, definirPerguntaSeguranca, conferirResposta,
+    temPinAssistencia, definirPinAssistencia, conferirPinAssistencia,
+    addAreaEspera, esperaPorArea,
     temPinFinanceiro, definirPinFinanceiro, conferirPinFinanceiro,
     addCategoriaFin, importarLancamentos, resumoFin, anosFin,
     anosAgenda, eventosDoAno, conflitoSala,
