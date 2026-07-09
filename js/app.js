@@ -118,6 +118,7 @@ const App = (() => {
         <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); font-size:0.82rem; display:flex; flex-direction:column; gap:6px;">
           <a href="#/professor">&#128274; Sou professor — entrar com meu PIN</a>
           <a href="#/atendimentos/minha-area">&#128274; Sou profissional de saúde — entrar com meu PIN</a>
+          ${primeiraVez ? "" : `<a href="#" id="portao-esqueci" style="color:var(--text-muted);">Esqueci a senha do administrador</a>`}
         </div>
       </div>`;
 
@@ -156,6 +157,24 @@ const App = (() => {
     document.getElementById("portao-entrar").addEventListener("click", entrar);
     view.querySelectorAll("input").forEach(i =>
       i.addEventListener("keydown", ev => { if (ev.key === "Enter") entrar(); }));
+
+    /* recuperação: redefine só a senha do admin, mantendo todos os dados.
+       Só funciona neste computador (quem tem acesso físico já controla tudo). */
+    const esqueci = document.getElementById("portao-esqueci");
+    if (esqueci) esqueci.addEventListener("click", ev => {
+      ev.preventDefault();
+      if (!confirm("Redefinir a senha do administrador?\n\nTodos os dados (alunos, financeiro, etc.) são mantidos — só a senha do admin será trocada. As demais senhas e PINs continuam válidos.\n\nContinuar?")) return;
+      const nova = prompt("Digite a NOVA senha do administrador (mínimo 4 caracteres):");
+      if (nova === null) return;
+      if (nova.trim().length < 4) { alert("A senha deve ter pelo menos 4 caracteres."); return; }
+      const conf = prompt("Digite a nova senha de novo para confirmar:");
+      if (nova !== conf) { alert("As senhas não conferem. Nada foi alterado."); return; }
+      Store.definirSenha("admin", nova);
+      sessionStorage.setItem(CHAVE_NIVEL, "admin");
+      aviso("Senha do administrador redefinida.");
+      render();
+    });
+
     senha.focus();
     window.scrollTo(0, 0);
   }

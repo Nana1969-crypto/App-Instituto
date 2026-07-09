@@ -290,26 +290,24 @@ Views.seguranca = () => {
   `;
 };
 
-/* criar/trocar senha de um perfil — sempre confirmando a senha do admin antes */
+/* criar/trocar senha de um perfil. Estar logado como admin já é a autorização
+   (não pedimos a senha atual de novo — evita ficar preso se ela for esquecida). */
 Actions.senhaPerfil = perfil => {
   if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera senhas."); return; }
   const rotulo = { admin: "do administrador", secretaria: "da secretaria" }[perfil];
-  const atual = prompt("Confirme a senha ATUAL do administrador:");
-  if (atual === null) return;
-  if (!Store.conferirSenha("admin", atual)) { alert("Senha do administrador incorreta."); return; }
   const nova = prompt(`Digite a nova senha ${rotulo} (mínimo 4 caracteres):`);
   if (nova === null) return;
-  if (nova.length < 4) { alert("A nova senha deve ter pelo menos 4 caracteres."); return; }
+  if (nova.trim().length < 4) { alert("A nova senha deve ter pelo menos 4 caracteres."); return; }
+  const conf = prompt("Digite a nova senha de novo para confirmar:");
+  if (conf === null) return;
+  if (nova !== conf) { alert("As senhas não conferem. Nada foi alterado."); return; }
   Store.definirSenha(perfil, nova);
-  U.toast("Senha salva.");
+  U.toast(`Senha ${rotulo} salva.`);
   App.render();
 };
 
 Actions.pinFinanceiro = () => {
   if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera o PIN."); return; }
-  const atual = prompt("Confirme a senha ATUAL do administrador:");
-  if (atual === null) return;
-  if (!Store.conferirSenha("admin", atual)) { alert("Senha do administrador incorreta."); return; }
   const pin = prompt("Novo PIN do gestor financeiro (4 a 6 dígitos):");
   if (pin === null) return;
   if (!/^\d{4,6}$/.test(pin.trim())) { alert("O PIN deve ter de 4 a 6 dígitos numéricos."); return; }
