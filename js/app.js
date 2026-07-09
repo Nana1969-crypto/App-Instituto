@@ -18,7 +18,8 @@ const App = (() => {
     paciente: id => Views.pacienteDetalhe(id),
     professor: () => Views.professorArea(),
     agenda: () => Views.agenda(),
-    documentacao: sub => Views.documentacao(sub)
+    documentacao: sub => Views.documentacao(sub),
+    financeiro: () => Views.financeiro()
   };
 
   const CHAVE_NIVEL = "bzn-nivel";
@@ -38,7 +39,10 @@ const App = (() => {
 
     /* portão de entrada: sem login, só as áreas restritas de professor e
        profissional de saúde (que têm PIN próprio) */
-    const rotaLivre = rota === "professor" || (rota === "atendimentos" && param === "minha-area");
+    /* rotas com controle próprio: PIN de professor, de profissional e do financeiro */
+    const rotaLivre = rota === "professor" ||
+      (rota === "atendimentos" && param === "minha-area") ||
+      rota === "financeiro";
     const btnSair = document.getElementById("btn-sair-sistema");
     if (!nivel() && !rotaLivre) {
       if (btnSair) btnSair.hidden = true;

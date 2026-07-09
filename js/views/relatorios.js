@@ -114,6 +114,7 @@ Views.relatorios = () => {
       <div class="head-actions">
         <button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>
         <button class="btn" data-action="senhaPerfil" data-id="secretaria">${Store.temSenha("secretaria") ? "Trocar" : "Criar"} senha da secretaria</button>
+        <button class="btn" data-action="pinFinanceiro">${Store.temPinFinanceiro() ? "Trocar" : "Criar"} PIN do gestor financeiro</button>
       </div>
       <div class="combo-note" style="margin-top:14px;">
         <strong>Admin</strong>: acesso total, inclusive gerenciar senhas e PINs ·
@@ -241,6 +242,19 @@ Actions.senhaPerfil = perfil => {
   if (nova.length < 4) { alert("A nova senha deve ter pelo menos 4 caracteres."); return; }
   Store.definirSenha(perfil, nova);
   U.toast("Senha salva.");
+  App.render();
+};
+
+Actions.pinFinanceiro = () => {
+  if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera o PIN."); return; }
+  const atual = prompt("Confirme a senha ATUAL do administrador:");
+  if (atual === null) return;
+  if (!Store.conferirSenha("admin", atual)) { alert("Senha do administrador incorreta."); return; }
+  const pin = prompt("Novo PIN do gestor financeiro (4 a 6 dígitos):");
+  if (pin === null) return;
+  if (!/^\d{4,6}$/.test(pin.trim())) { alert("O PIN deve ter de 4 a 6 dígitos numéricos."); return; }
+  Store.definirPinFinanceiro(pin.trim());
+  U.toast("PIN do financeiro salvo.");
   App.render();
 };
 

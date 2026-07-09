@@ -14,6 +14,8 @@ const Store = (() => {
                       //  fotos: [dataURL, ...] (até 8, comprimidas)}
     eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
                       //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
+    lancamentos: [],  // financeiro — {id, data, descricao, valor (positivo=entrada, negativo=saída),
+                      //  origem: sicoob|guru|manual, categoria, obs, chave (p/ evitar duplicados)}
     documentos: [],   // {id, categoria: documento|formulario, titulo, assunto, data,
                       //  tipo: arquivo|link, arquivo:{nome,dataUrl}, url}
     linksImagens: [], // {id, assunto, titulo, url, obs}
@@ -77,6 +79,11 @@ const Store = (() => {
     if (!Array.isArray(db.atendimentos)) db.atendimentos = [];
     if (!Array.isArray(db.eventos)) db.eventos = [];
     if (!Array.isArray(db.equipe)) db.equipe = [];
+    if (!Array.isArray(db.lancamentos)) db.lancamentos = [];
+    if (!Array.isArray(db.config.categoriasFin) || !db.config.categoriasFin.length) {
+      db.config.categoriasFin = ["Doações", "Mensalidades", "Vendas Guru", "Subvenções",
+        "Aluguel", "Materiais", "Pessoal", "Contas (luz, água, internet)", "Outros"];
+    }
     if (!Array.isArray(db.documentos)) db.documentos = [];
     if (!Array.isArray(db.linksImagens)) db.linksImagens = [];
     if (!Array.isArray(db.config.salas) || !db.config.salas.length) {
@@ -105,6 +112,83 @@ const Store = (() => {
   function temSenhaGeral() { return temSenha("admin"); }
   function definirSenhaGeral(senha) { definirSenha("admin", senha); }
   function conferirSenhaGeral(senha) { return conferirSenha("admin", senha); }
+
+  /* ---------- financeiro ---------- */
+
+  /* PIN do gestor financeiro (definido pelo admin) */
+  function temPinFinanceiro() { return !!db.config.pinFinanceiroHash; }
+  function definirPinFinanceiro(pin) {
+    db.config.pinFinanceiroHash = U.hashPin(String(pin));
+    salvar();
+  }
+  function conferirPinFinanceiro(pin) {
+    return temPinFinanceiro() && U.hashPin(String(pin)) === db.config.pinFinanceiroHash;
+  }
+
+  function addCategoriaFin(nome) {
+    const n = String(nome || "").trim();
+    if (!n) return false;
+    if (!db.config.categoriasFin.some(x => x.toLowerCase() === n.toLowerCase())) {
+      db.config.categoriasFin.push(n);
+      salvar();
+    }
+    return n;
+  }
+
+  /* chave de deduplicação de um lançamento */
+  function chaveLancamento(l) {
+    return [l.data, String(l.valor), (l.descricao || "").trim().toLowerCase().slice(0, 60)].join("|");
+  }
+
+  /* importa uma lista de lançamentos, pulando os que já existem */
+  function importarLancamentos(lista, origem) {
+    const existentes = new Set(db.lancamentos.map(l => l.chave || chaveLancamento(l)));
+    let novos = 0, pulados = 0;
+    for (const l of lista) {
+      const chave = chaveLancamento(l);
+      if (existentes.has(chave)) { pulados++; continue; }
+      existentes.add(chave);
+      db.lancamentos.push({
+        id: U.uid(), data: l.data, descricao: l.descricao, valor: l.valor,
+        origem: origem || l.origem || "manual",
+        categoria: l.categoria || (origem === "guru" ? "Vendas Guru" : ""),
+        obs: l.obs || "", chave
+      });
+      novos++;
+    }
+    salvar();
+    return { novos, pulados };
+  }
+
+  /* resumo por período (anoMes "2026-07" ou ano "2026"; vazio = tudo) */
+  function resumoFin(prefixo) {
+    const lan = db.lancamentos.filter(l => !prefixo || (l.data || "").startsWith(prefixo));
+    let entradas = 0, saidas = 0;
+    const porCategoria = new Map();
+    const porMes = new Map();
+    for (const l of lan) {
+      const v = Number(l.valor) || 0;
+      if (v >= 0) entradas += v; else saidas += -v;
+      const cat = l.categoria || "Sem categoria";
+      porCategoria.set(cat, (porCategoria.get(cat) || 0) + v);
+      const mes = (l.data || "").slice(0, 7);
+      const m = porMes.get(mes) || { entradas: 0, saidas: 0 };
+      if (v >= 0) m.entradas += v; else m.saidas += -v;
+      porMes.set(mes, m);
+    }
+    return {
+      lancamentos: lan.sort((a, b) => (b.data || "").localeCompare(a.data || "")),
+      entradas, saidas, saldo: entradas - saidas,
+      porCategoria: [...porCategoria.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])),
+      porMes: [...porMes.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    };
+  }
+
+  function anosFin() {
+    const anos = new Set(db.lancamentos.map(l => (l.data || "").slice(0, 4)).filter(Boolean));
+    anos.add(String(new Date().getFullYear()));
+    return [...anos].sort();
+  }
 
   function addSala(nome) {
     const n = String(nome || "").trim();
@@ -790,6 +874,8 @@ const Store = (() => {
     temSenhaGeral, definirSenhaGeral, conferirSenhaGeral,
     temSenha, definirSenha, removerSenha, conferirSenha,
     aniversariantes,
+    temPinFinanceiro, definirPinFinanceiro, conferirPinFinanceiro,
+    addCategoriaFin, importarLancamentos, resumoFin, anosFin,
     anosAgenda, eventosDoAno, conflitoSala,
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,

@@ -86,6 +86,12 @@ de professores (nascimento, CPF/CNPJ, endereço, PIX, início no instituto e ane
 **ano e mês**; gráficos de condição apenas Gratuitos × Pagos (bolsistas contam
 como pagos).
 
+- **Financeiro** (admin e gestor financeiro, com PIN próprio definido pelo admin):
+  importação do extrato **SICOOB** (OFX/CSV) e das vendas/assinaturas da **Guru**
+  (CSV), com prévia antes de gravar e proteção contra duplicados; lançamentos
+  manuais, categorias configuráveis, entradas × saídas por mês, despesas por
+  categoria e exportação em planilha por período.
+
 Na primeira visita, o botão **“Carregar dados de exemplo”** no Painel preenche o
 sistema com dados fictícios para conhecer as telas. Para começar de verdade, use
 **Relatórios → Apagar todos os dados**.
