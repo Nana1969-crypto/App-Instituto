@@ -74,7 +74,12 @@ Views.financeiro = () => {
       <td style="white-space:nowrap; font-weight:700; color:${(Number(l.valor) || 0) >= 0 ? "var(--good)" : "var(--danger)"};">
         ${(Number(l.valor) || 0) >= 0 ? "+" : "−"}${U.moeda(Math.abs(Number(l.valor) || 0))}</td>
       <td><select class="fin-cat" data-id="${l.id}" style="font-size:0.78rem; padding:4px 6px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); max-width:180px;">${optCat(l)}</select></td>
-      <td><button class="icon-btn" data-action="excluirLanc" data-id="${l.id}" title="Excluir" aria-label="Excluir lançamento">&#128465;</button></td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" data-action="anexosLanc" data-id="${l.id}" title="Notas fiscais / comprovantes" aria-label="Notas fiscais">
+          &#128206;${(l.anexos || []).length ? `<span style="font-size:0.68rem; font-weight:800; color:var(--accent);">${l.anexos.length}</span>` : ""}
+        </button>
+        <button class="icon-btn" data-action="excluirLanc" data-id="${l.id}" title="Excluir" aria-label="Excluir lançamento">&#128465;</button>
+      </td>
     </tr>`).join("");
 
   return `
@@ -410,6 +415,43 @@ Actions.novoLanc = () => {
   });
 };
 
+/* notas fiscais / comprovantes de um lançamento */
+Actions.anexosLanc = id => {
+  const l = Store.col("lancamentos").find(x => x.id === id);
+  if (!l) return;
+  App.abrirModal("Notas fiscais e comprovantes", `
+    <form>
+      <p style="font-size:0.88rem; margin-bottom:4px;">
+        <strong>${U.esc(l.descricao || "Lançamento")}</strong> · ${U.fmtData(l.data)} ·
+        <span style="font-weight:700; color:${(Number(l.valor) || 0) >= 0 ? "var(--good)" : "var(--danger)"};">
+          ${(Number(l.valor) || 0) >= 0 ? "+" : "−"}${U.moeda(Math.abs(Number(l.valor) || 0))}</span>
+      </p>
+      ${(l.anexos || []).length ? `
+      <div style="margin:10px 0;">
+        <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:6px;">Arquivos salvos (clique para baixar)</div>
+        <div class="cross-chips">${Anexos.links(l.anexos)}</div>
+      </div>` : ""}
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        ${Anexos.campoHTML("Anexar / gerenciar arquivos", "Nota fiscal em PDF ou foto do comprovante. Até 3 por lançamento.")}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+        <button type="submit" class="btn accent">Salvar anexos</button>
+      </div>
+    </form>`, () => {
+    try {
+      Store.upsert("lancamentos", { ...l, anexos: Anexos.lista() });
+    } catch (e) {
+      alert("Não foi possível salvar: o armazenamento do navegador está cheio.\nDica: para notas grandes, digitalize em qualidade menor ou guarde na área Documentação com link.");
+      return false;
+    }
+    U.toast("Anexos salvos.");
+    App.render();
+  });
+  Anexos.iniciar(l.anexos, 3);
+  Anexos.ligar();
+};
+
 Actions.novaCategoriaFin = () => {
   const nome = prompt("Nova categoria (ex.: Eventos, Transporte):");
   if (!nome) return;
@@ -429,10 +471,11 @@ Actions.excluirLanc = id => {
 Actions.csvFinanceiro = () => {
   const prefixo = filtroFin.mes ? `${filtroFin.ano}-${String(filtroFin.mes).padStart(2, "0")}` : filtroFin.ano;
   const r = Store.resumoFin(prefixo);
-  const cab = ["Data", "Descrição", "Valor", "Tipo", "Categoria", "Origem"];
+  const cab = ["Data", "Descrição", "Valor", "Tipo", "Categoria", "Origem", "Notas anexadas"];
   const linhas = r.lancamentos.map(l => U.linhaCSV([
     U.fmtData(l.data), l.descricao, String(l.valor).replace(".", ","),
-    (Number(l.valor) || 0) >= 0 ? "Entrada" : "Saída", l.categoria, l.origem
+    (Number(l.valor) || 0) >= 0 ? "Entrada" : "Saída", l.categoria, l.origem,
+    (l.anexos || []).length ? (l.anexos.length + " (" + l.anexos.map(a => a.nome).join(", ") + ")") : ""
   ]));
   linhas.push(U.linhaCSV([]));
   linhas.push(U.linhaCSV(["TOTAIS", "", "", "Entradas: " + U.moeda(r.entradas), "Saídas: " + U.moeda(r.saidas), "Saldo: " + U.moeda(r.saldo)]));

@@ -15,7 +15,8 @@ const Store = (() => {
     eventos: [],      // {id, titulo, tipo: curso|workshop|palestra|evento|reuniao|outro,
                       //  data, horaInicio, horaFim, sala, turmaId, responsavel, obs}
     lancamentos: [],  // financeiro — {id, data, descricao, valor (positivo=entrada, negativo=saída),
-                      //  origem: sicoob|guru|manual, categoria, obs, chave (p/ evitar duplicados)}
+                      //  origem: sicoob|guru|manual, categoria, obs, chave (p/ evitar duplicados),
+                      //  anexos: [{nome, dataUrl}] (notas fiscais/comprovantes)}
     documentos: [],   // {id, categoria: documento|formulario, titulo, assunto, data,
                       //  tipo: arquivo|link, arquivo:{nome,dataUrl}, url}
     linksImagens: [], // {id, assunto, titulo, url, obs}
