@@ -19,7 +19,8 @@ const App = (() => {
     professor: () => Views.professorArea(),
     agenda: () => Views.agenda(),
     documentacao: sub => Views.documentacao(sub),
-    financeiro: () => Views.financeiro()
+    financeiro: sub => Views.financeiro(sub),
+    seguranca: () => Views.seguranca()
   };
 
   const CHAVE_NIVEL = "bzn-nivel";
@@ -53,6 +54,8 @@ const App = (() => {
       btnSair.hidden = !nivel();
       btnSair.textContent = nivel() ? "Sair (" + ({ admin: "admin", secretaria: "secretaria" }[nivel()] || "") + ")" : "Sair";
     }
+    const btnSeg = document.getElementById("btn-seguranca");
+    if (btnSeg) btnSeg.hidden = nivel() !== "admin";
 
     document.querySelectorAll("#nav-tabs a").forEach(a => {
       const r = a.dataset.route;
@@ -197,6 +200,9 @@ const App = (() => {
   document.getElementById("menu-btn").addEventListener("click", () => {
     document.getElementById("nav-tabs").classList.toggle("open");
   });
+
+  const btnSeguranca = document.getElementById("btn-seguranca");
+  if (btnSeguranca) btnSeguranca.addEventListener("click", () => { location.hash = "#/seguranca"; });
 
   const btnSairSistema = document.getElementById("btn-sair-sistema");
   if (btnSairSistema) {

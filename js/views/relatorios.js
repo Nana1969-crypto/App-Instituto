@@ -230,6 +230,66 @@ Actions.backupImportar = () => {
   input.click();
 };
 
+/* ---------------- página Segurança e logins (somente admin) ---------------- */
+
+Views.seguranca = () => {
+  if (App.nivel() !== "admin") {
+    return `<div class="panel" style="max-width:440px; margin:40px auto 0;">
+      <div class="empty-note">Somente o <strong>administrador</strong> acessa a área de segurança.<br>
+      Entre com o perfil Administração para gerenciar senhas e PINs.</div></div>`;
+  }
+  const item = (titulo, descricao, botoes) => `
+    <div class="panel">
+      <h3>${titulo}</h3>
+      <p class="panel-sub">${descricao}</p>
+      <div class="head-actions">${botoes}</div>
+    </div>`;
+  return `
+    <div class="page-head">
+      <div>
+        <h2>&#9881; Segurança e logins</h2>
+        <p>Central do administrador: todas as senhas e PINs do sistema são criados e trocados aqui (e apenas por você).</p>
+      </div>
+    </div>
+
+    ${item("Senha do administrador",
+      "A senha principal do sistema. Guarde em local seguro — quem a tem controla todos os acessos.",
+      `<button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>`)}
+
+    ${item("Senha da secretaria",
+      `Compartilhada pela equipe da secretaria. Operação completa (cadastros, chamada, atendimentos, agenda, relatórios), sem gerenciar logins nem acessar o financeiro. ${Store.temSenha("secretaria") ? "<strong>Status: criada ✓</strong>" : "<strong>Status: ainda não criada</strong>"}`,
+      `<button class="btn accent" data-action="senhaPerfil" data-id="secretaria">${Store.temSenha("secretaria") ? "Trocar" : "Criar"} senha da secretaria</button>`)}
+
+    ${item("PIN do gestor financeiro",
+      `Dá acesso exclusivo à aba Financeiro (extrato, Guru, notas fiscais e relatórios). ${Store.temPinFinanceiro() ? "<strong>Status: criado ✓</strong>" : "<strong>Status: ainda não criado</strong>"}`,
+      `<button class="btn accent" data-action="pinFinanceiro">${Store.temPinFinanceiro() ? "Trocar" : "Criar"} PIN do gestor financeiro</button>`)}
+
+    ${item("PINs dos professores",
+      "Cada professor tem um PIN individual, definido no cadastro dele (o campo só aparece para o admin). Com o PIN, ele acessa apenas as próprias turmas e chamadas.",
+      `<a class="btn ghost" href="#/professores" style="text-decoration:none;">Abrir cadastro de professores &rarr;</a>`)}
+
+    ${item("PINs dos profissionais de saúde",
+      "Mesmo esquema: PIN individual no cadastro de cada profissional, com acesso restrito aos próprios pacientes e agenda.",
+      `<a class="btn ghost" href="#/atendimentos/profissionais" style="text-decoration:none;">Abrir cadastro de profissionais &rarr;</a>`)}
+
+    <div class="panel">
+      <h3>Quem acessa o quê</h3>
+      <p class="panel-sub">Resumo das permissões</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Perfil</th><th>Como entra</th><th>O que vê</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill info">Admin</span></td><td>Perfil "Administração" + senha</td><td>Tudo, inclusive esta página e o Financeiro</td></tr>
+          <tr><td><span class="pill ok">Secretaria</span></td><td>Perfil "Secretaria" + senha</td><td>Operação completa, exceto logins e Financeiro</td></tr>
+          <tr><td><span class="pill warn">Gestor financeiro</span></td><td>Aba Financeiro + PIN</td><td>Somente o Financeiro</td></tr>
+          <tr><td><span class="pill muted">Professor</span></td><td>"Sou professor" + nome + PIN</td><td>Somente as turmas e alunos dele</td></tr>
+          <tr><td><span class="pill muted">Profissional</span></td><td>"Sou profissional de saúde" + nome + PIN</td><td>Somente os pacientes e agenda dele</td></tr>
+          <tr><td><span class="pill bad">Colaborador</span></td><td>Não tem acesso</td><td>Apenas cadastro interno (aba Professores &rarr; Funcionários e colaboradores)</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  `;
+};
+
 /* criar/trocar senha de um perfil — sempre confirmando a senha do admin antes */
 Actions.senhaPerfil = perfil => {
   if (App.nivel() !== "admin") { U.toast("Apenas o administrador altera senhas."); return; }

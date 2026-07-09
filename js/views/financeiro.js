@@ -12,8 +12,16 @@ const Fin = {
 let filtroFin = { ano: String(new Date().getFullYear()), mes: 0 };
 let importPendente = null; // {linhas, origem, mapa} aguardando confirmação
 
-Views.financeiro = () => {
+function subnavFin(ativa) {
+  return `<div class="subtabs">
+    <a href="#/financeiro" class="${ativa === "mov" ? "active" : ""}">Movimentações</a>
+    <a href="#/financeiro/relatorios" class="${ativa === "relatorios" ? "active" : ""}">Relatórios</a>
+  </div>`;
+}
+
+Views.financeiro = sub => {
   if (!Fin.logado()) return viewLoginFin();
+  if (sub === "relatorios") return viewRelatoriosFin();
 
   const prefixo = filtroFin.mes ? `${filtroFin.ano}-${String(filtroFin.mes).padStart(2, "0")}` : filtroFin.ano;
   const r = Store.resumoFin(prefixo);
@@ -94,6 +102,7 @@ Views.financeiro = () => {
         <button class="btn ghost" data-action="imprimir">Imprimir / PDF</button>
       </div>
     </div>
+    ${subnavFin("mov")}
 
     <div class="panel">
       <h3>Importar movimentações</h3>
@@ -159,6 +168,114 @@ Views.financeiro = () => {
       </table></div>` : `<div class="empty-note">Nenhum lançamento no período.<br>Importe o extrato do SICOOB ou o relatório da Guru acima.</div>`}
     </div>
   `;
+};
+
+/* ---------------- relatórios do financeiro ---------------- */
+
+function viewRelatoriosFin() {
+  const fc = Store.resumoFinanceiroCursos();
+  const fa = Store.resumoFinanceiro();
+  const pagantes = U.ordenarPorNome(Store.col("pacientes").filter(p => p.tipoAtendimento === "pago"));
+
+  const linhasCursos = fc.porCurso.map(x => `
+    <tr>
+      <td><span class="chip cor-${x.curso.corIndex}">${U.esc(x.curso.nome)}</span></td>
+      <td>${U.moeda(x.valor)}${x.curso.cobranca === "mensal" ? "/mês" : " (único)"}</td>
+      <td>${x.pagantes}</td>
+      <td>${x.bolsistas}</td>
+      <td style="font-weight:700">${U.moeda(x.previsto)}${x.curso.cobranca === "mensal" ? "/mês" : ""}</td>
+    </tr>`).join("");
+
+  const linhasAtend = pagantes.map(p => `
+    <tr>
+      <td>${U.esc(p.nome)}</td>
+      <td>${p.cobranca === "mensal" ? "Mensal" : "Por consulta"}</td>
+      <td>${U.moeda(p.valor)}</td>
+      <td>${Store.atendimentosDoPaciente(p.id).filter(a => a.status === "realizado").length}</td>
+    </tr>`).join("");
+
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Financeiro — Relatórios</h2>
+        <p>Receitas previstas dos cursos e dos atendimentos, com download separado de cada relatório.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn ghost" data-action="imprimir">Imprimir / PDF</button>
+      </div>
+    </div>
+    ${subnavFin("relatorios")}
+
+    <div class="panel">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h3>Relatório dos cursos pagos</h3>
+          <p class="panel-sub">Pagantes, bolsistas e receita prevista por curso (matrículas não desistentes)</p>
+        </div>
+        <button class="btn" data-action="csvRelCursos">&#11015; Baixar relatório dos cursos</button>
+      </div>
+      ${fc.porCurso.length ? `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Curso</th><th>Valor</th><th>Pagantes</th><th>Bolsistas</th><th>Receita prevista</th></tr></thead>
+        <tbody>${linhasCursos}</tbody>
+      </table></div>
+      <div class="combo-note">Total previsto: <strong>${U.moeda(fc.receitaMensal)}/mês</strong> em mensalidades${fc.receitaUnica ? ` + <strong>${U.moeda(fc.receitaUnica)}</strong> em valores únicos` : ""}. Bolsistas não geram cobrança.</div>`
+      : `<div class="empty-note">Nenhum curso pago cadastrado.</div>`}
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h3>Relatório dos atendimentos pagos</h3>
+          <p class="panel-sub">Pacientes pagantes, forma de cobrança e consultas realizadas</p>
+        </div>
+        <button class="btn" data-action="csvRelAtend">&#11015; Baixar relatório dos atendimentos</button>
+      </div>
+      ${pagantes.length ? `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Paciente</th><th>Cobrança</th><th>Valor</th><th>Consultas realizadas</th></tr></thead>
+        <tbody>${linhasAtend}</tbody>
+      </table></div>
+      <div class="combo-note">Receita prevista no mês: <strong>${U.moeda(fa.previstoMes)}</strong> (${U.moeda(fa.mensal)} em mensalidades + ${U.moeda(fa.porConsultaMes)} por consulta) · ${fa.pagantes} ${U.plural(fa.pagantes, "pagante", "pagantes")} · ${fa.gratuitos} gratuitos.</div>`
+      : `<div class="empty-note">Nenhum paciente pagante cadastrado.</div>`}
+    </div>
+
+    <div class="panel">
+      <h3>Extrato e movimentações</h3>
+      <p class="panel-sub">A planilha completa do extrato (SICOOB, Guru e manuais) continua na aba Movimentações</p>
+      <div class="head-actions">
+        <button class="btn ghost" data-action="csvFinanceiro">Exportar extrato do período selecionado</button>
+      </div>
+    </div>
+  `;
+}
+
+Actions.csvRelCursos = () => {
+  const fc = Store.resumoFinanceiroCursos();
+  const cab = ["Curso", "Cobrança", "Valor", "Pagantes", "Bolsistas", "Receita prevista"];
+  const linhas = fc.porCurso.map(x => U.linhaCSV([
+    x.curso.nome, x.curso.cobranca === "mensal" ? "Mensal" : "Valor único",
+    String(x.valor).replace(".", ","), x.pagantes, x.bolsistas, String(x.previsto).replace(".", ",")
+  ]));
+  linhas.push(U.linhaCSV([]));
+  linhas.push(U.linhaCSV(["TOTAL", "", "", "", "", "Mensal: " + U.moeda(fc.receitaMensal) + " | Único: " + U.moeda(fc.receitaUnica)]));
+  U.baixarArquivo("relatorio-financeiro-cursos-instituto-bzn.csv", "﻿" + [U.linhaCSV(cab), ...linhas].join("\n"), "text/csv;charset=utf-8");
+  U.toast("Relatório dos cursos baixado.");
+};
+
+Actions.csvRelAtend = () => {
+  const fa = Store.resumoFinanceiro();
+  const pagantes = U.ordenarPorNome(Store.col("pacientes").filter(p => p.tipoAtendimento === "pago"));
+  const cab = ["Paciente", "Cobrança", "Valor", "Consultas realizadas"];
+  const linhas = pagantes.map(p => U.linhaCSV([
+    p.nome, p.cobranca === "mensal" ? "Mensal" : "Por consulta",
+    String(p.valor).replace(".", ","),
+    Store.atendimentosDoPaciente(p.id).filter(a => a.status === "realizado").length
+  ]));
+  linhas.push(U.linhaCSV([]));
+  linhas.push(U.linhaCSV(["TOTAL PREVISTO NO MÊS", "", String(fa.previstoMes).replace(".", ","), ""]));
+  U.baixarArquivo("relatorio-financeiro-atendimentos-instituto-bzn.csv", "﻿" + [U.linhaCSV(cab), ...linhas].join("\n"), "text/csv;charset=utf-8");
+  U.toast("Relatório dos atendimentos baixado.");
 };
 
 function viewLoginFin() {
