@@ -43,10 +43,13 @@ const App = (() => {
     /* portão de entrada: sem login, só as áreas restritas de professor e
        profissional de saúde (que têm PIN próprio) */
     /* rotas com controle próprio: PIN de professor, de profissional e do financeiro */
+    const asLogado = sessionStorage.getItem("bzn-as-logado") === "1";
     const rotaLivre = rota === "professor" ||
       (rota === "atendimentos" && param === "minha-area") ||
       rota === "financeiro" ||
-      rota === "assistencia" || rota === "assistido";
+      rota === "assistencia" || rota === "assistido" ||
+      /* a equipe da assistência social também consulta os Indicadores */
+      ((rota === "indicadores" || rota === "graficos" || rota === "relatorios") && asLogado);
     const btnSair = document.getElementById("btn-sair-sistema");
     if (!nivel() && !rotaLivre) {
       if (btnSair) btnSair.hidden = true;
