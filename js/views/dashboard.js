@@ -69,9 +69,6 @@ Views.dashboard = () => {
         <h2>Visão geral</h2>
         <p>Resumo de matrículas, presença e trajetória dos alunos entre os cursos do instituto.</p>
       </div>
-      ${!temDados ? `<div class="head-actions">
-        <button class="btn ghost" data-action="carregarDemo">Carregar dados de exemplo</button>
-      </div>` : ""}
     </div>
 
     <section class="stat-strip">
@@ -213,11 +210,3 @@ function secaoAtendimentosDash() {
       </div>
     </section>`;
 }
-
-Actions.carregarDemo = () => {
-  if (confirm("Carregar dados de exemplo (alunos, turmas e chamadas fictícios) para conhecer o sistema?\nVocê pode apagar tudo depois em Relatórios → Backup.")) {
-    Store.carregarDemo();
-    U.toast("Dados de exemplo carregados.");
-    App.render();
-  }
-};

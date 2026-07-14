@@ -19,10 +19,9 @@ Views.graficos = () => {
     return `
       <div class="page-head">
         <div><h2>Indicadores</h2><p>Relatórios visuais dos cursos, presença e perfil social dos alunos.</p></div>
-        <div class="head-actions"><button class="btn ghost" data-action="carregarDemo">Carregar dados de exemplo</button></div>
       </div>
       ${subnavIndicadores("graficos")}
-      <div class="panel"><div class="empty-note">Ainda não há dados para gerar gráficos.<br>Cadastre alunos e turmas, ou carregue os dados de exemplo.</div></div>`;
+      <div class="panel"><div class="empty-note">Ainda não há dados para gerar gráficos.<br>Cadastre alunos e turmas para ver os indicadores aqui.</div></div>`;
   }
 
   /* 1. alunos por curso (rosca) */

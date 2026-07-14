@@ -348,10 +348,10 @@ Actions.pinFinanceiro = () => {
 };
 
 Actions.apagarTudo = () => {
-  if (confirm("Apagar TODOS os dados deste navegador?\nEssa ação não pode ser desfeita. Exporte um backup antes, se precisar.")) {
-    if (confirm("Tem certeza? Alunos, turmas, chamadas e matrículas serão apagados.")) {
+  if (confirm("Apagar TODOS os cadastros deste navegador?\n\nSerão removidos: alunos, turmas, chamadas, matrículas, pacientes, atendimentos, assistidos, lançamentos financeiros, agenda e documentos.\n\nSUAS SENHAS, PINs e a pergunta de segurança são MANTIDOS.\n\nEssa ação não pode ser desfeita. Exporte um backup antes, se precisar.")) {
+    if (confirm("Tem certeza? Esta é a limpeza para começar a alimentar o sistema com os dados reais do instituto.")) {
       Store.limparTudo();
-      U.toast("Dados apagados. Cursos padrão recriados.");
+      U.toast("Cadastros apagados. Logins mantidos. Pronto para usar!");
       App.render();
     }
   }

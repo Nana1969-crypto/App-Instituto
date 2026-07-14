@@ -932,8 +932,13 @@ const Store = (() => {
     salvar();
   }
 
+  /* limpa todos os cadastros, mas PRESERVA as configurações de acesso
+     (senhas, PINs, pergunta de segurança, categorias, salas, especialidades)
+     para o administrador não precisar reconfigurar tudo de novo */
   function limparTudo() {
+    const config = db.config;
     db = vazio();
+    db.config = config;
     seedCursos();
     salvar();
   }
@@ -959,7 +964,7 @@ const Store = (() => {
     atendimentosDoPaciente, especialidadesDoPaciente, cruzamentoAtendimentos,
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,
     enchenteGeral, encaminhamentoGeral, resumoGratuidade, condicaoAluno,
-    exportarJSON, importarJSON, carregarDemo, limparTudo,
+    exportarJSON, importarJSON, limparTudo,
     get config() { return db.config; }
   };
 })();
