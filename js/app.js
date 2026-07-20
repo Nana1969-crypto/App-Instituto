@@ -1,6 +1,13 @@
 /* Roteador, navegação e modal */
 "use strict";
 
+/* registra o service worker (PWA — instalável e offline) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
 const App = (() => {
   const rotas = {
     dashboard: () => Views.dashboard(),

@@ -1,0 +1,32 @@
+{
+  "name": "Instituto Brasa Zona Norte — Painel",
+  "short_name": "Instituto BZN",
+  "description": "Painel administrativo de cursos, atendimentos, assistência social e financeiro do Instituto Brasa Zona Norte.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#041E52",
+  "theme_color": "#041E52",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
