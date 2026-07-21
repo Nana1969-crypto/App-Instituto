@@ -30,6 +30,8 @@ const Store = (() => {
     compromissosAS: [],// agenda interna — {id, data, hora, titulo, assistidoId, responsavel, obs,
                       //  status: agendado|realizado|cancelado}
     legislacaoAS: [], // {id, titulo, tipo: link|arquivo, url, arquivo:{nome,dataUrl}, obs}
+    profsociais: [],  // equipe da assistência social — {id, nome, funcao, cress, formacao,
+                      //  telefone, email, dias, horarios, documentos:[{nome,dataUrl}], obs}
     documentos: [],   // {id, categoria: documento|formulario, titulo, assunto, data,
                       //  tipo: arquivo|link, arquivo:{nome,dataUrl}, url}
     linksImagens: [], // {id, assunto, titulo, url, obs}
@@ -98,6 +100,7 @@ const Store = (() => {
     if (!Array.isArray(db.listaEspera)) db.listaEspera = [];
     if (!Array.isArray(db.compromissosAS)) db.compromissosAS = [];
     if (!Array.isArray(db.legislacaoAS)) db.legislacaoAS = [];
+    if (!Array.isArray(db.profsociais)) db.profsociais = [];
     if (!Array.isArray(db.config.areasEspera) || !db.config.areasEspera.length) {
       db.config.areasEspera = [...db.config.especialidades, "Assistência Social", "Cursos"];
     }

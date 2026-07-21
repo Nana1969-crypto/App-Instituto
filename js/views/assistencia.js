@@ -11,7 +11,8 @@ const AS = {
 function subnavAS(ativa) {
   const abas = [
     ["", "Atendidos"], ["espera", "Lista de espera"],
-    ["agenda", "Agenda interna"], ["legislacao", "Legislação e documentos"]
+    ["agenda", "Agenda interna"], ["profissionais", "Profissionais"],
+    ["legislacao", "Legislação e documentos"]
   ];
   return `<div class="subtabs">${abas.map(([slug, rotulo]) =>
     `<a href="#/assistencia${slug ? "/" + slug : ""}" class="${ativa === slug ? "active" : ""}">${rotulo}</a>`).join("")}</div>`;
@@ -23,6 +24,7 @@ Views.assistencia = sub => {
   if (!AS.logado()) return viewLoginAS();
   if (sub === "espera") return viewEsperaAS();
   if (sub === "agenda") return viewAgendaAS();
+  if (sub === "profissionais") return viewProfSociais();
   if (sub === "legislacao") return viewLegislacaoAS();
   return viewAssistidosAS();
 };
@@ -534,6 +536,127 @@ Actions.editarCompromisso = id => abrirFormCompromisso(Store.col("compromissosAS
 Actions.excluirCompromisso = id => {
   if (confirm("Excluir este compromisso?")) {
     Store.remover("compromissosAS", id);
+    App.render();
+  }
+};
+
+/* ---------------- profissionais da assistência social ---------------- */
+
+function viewProfSociais() {
+  const profs = U.ordenarPorNome(Store.col("profsociais"));
+  const cards = profs.map((p, i) => {
+    const registros = [p.cress && "CRESS " + p.cress, p.formacao].filter(Boolean).join(" · ");
+    return `
+      <div class="entity-card cor-${(i % 8) + 1}">
+        <div class="e-head">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span class="avatar">${U.iniciais(p.nome)}</span>
+            <div>
+              <div class="e-title">${U.esc(p.nome)}</div>
+              <div class="e-meta">${U.esc(p.funcao || "")}</div>
+            </div>
+          </div>
+          <div class="e-actions">
+            <button class="icon-btn" data-action="editarProfSocial" data-id="${p.id}" title="Editar" aria-label="Editar profissional">&#9998;</button>
+            <button class="icon-btn" data-action="excluirProfSocial" data-id="${p.id}" title="Excluir" aria-label="Excluir profissional">&#128465;</button>
+          </div>
+        </div>
+        ${registros ? `<div class="e-meta">${U.esc(registros)}</div>` : ""}
+        <div class="e-meta">
+          ${p.dias ? "Atende: " + U.esc(p.dias) : ""}${p.dias && p.horarios ? " · " : ""}${U.esc(p.horarios || "")}<br>
+          ${U.esc(p.telefone || "")}${p.telefone && p.email ? " · " : ""}${U.esc(p.email || "")}
+        </div>
+        ${(p.documentos || []).length ? `<div class="cross-chips">${Anexos.links(p.documentos)}</div>` : ""}
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Profissionais da assistência</h2>
+        <p>Equipe da assistência social: assistentes sociais e apoio, com registro, contato e documentos.</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn accent" data-action="novoProfSocial">+ Novo profissional</button>
+      </div>
+    </div>
+    ${subnavAS("profissionais")}
+    ${profs.length ? `<div class="grid-cards">${cards}</div>`
+      : `<div class="panel"><div class="empty-note">Nenhum profissional cadastrado ainda.</div></div>`}
+  `;
+}
+
+function abrirFormProfSocial(p) {
+  App.abrirModal(p.id ? "Editar profissional" : "Novo profissional da assistência", `
+    <form>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="fps2-nome">Nome completo *</label>
+          <input id="fps2-nome" name="nome" required value="${U.esc(p.nome)}">
+        </div>
+        <div class="field">
+          <label for="fps2-funcao">Função / cargo</label>
+          <input id="fps2-funcao" name="funcao" placeholder="ex.: Assistente social, Psicóloga, Apoio" value="${U.esc(p.funcao)}">
+        </div>
+        <div class="field">
+          <label for="fps2-cress">CRESS (registro profissional)</label>
+          <input id="fps2-cress" name="cress" placeholder="ex.: 10ª Região 12345" value="${U.esc(p.cress)}">
+        </div>
+        <div class="field full">
+          <label for="fps2-form">Formação</label>
+          <input id="fps2-form" name="formacao" value="${U.esc(p.formacao)}">
+        </div>
+        <div class="field">
+          <label for="fps2-dias">Dias de atendimento</label>
+          <input id="fps2-dias" name="dias" placeholder="ex.: Seg a Sex" value="${U.esc(p.dias)}">
+        </div>
+        <div class="field">
+          <label for="fps2-hor">Horários</label>
+          <input id="fps2-hor" name="horarios" placeholder="ex.: 8h–17h" value="${U.esc(p.horarios)}">
+        </div>
+        <div class="field">
+          <label for="fps2-tel">Telefone</label>
+          <input id="fps2-tel" name="telefone" value="${U.esc(p.telefone)}">
+        </div>
+        <div class="field">
+          <label for="fps2-email">E-mail</label>
+          <input id="fps2-email" name="email" type="email" value="${U.esc(p.email)}">
+        </div>
+        <div class="field full">
+          <label for="fps2-obs">Observações</label>
+          <textarea id="fps2-obs" name="obs">${U.esc(p.obs)}</textarea>
+        </div>
+        ${Anexos.campoHTML("Documentos (PDF ou foto)", "Diploma, registro, contrato, etc. Até 5 arquivos.")}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+        <button type="submit" class="btn accent">Salvar profissional</button>
+      </div>
+    </form>`, dados => {
+    if (!dados.nome.trim()) return false;
+    try {
+      Store.upsert("profsociais", { id: p.id || undefined, ...dados, nome: dados.nome.trim(), documentos: Anexos.lista() });
+    } catch (e) {
+      alert("Não foi possível salvar: o armazenamento do navegador está cheio.\nRemova algum documento e tente novamente.");
+      return false;
+    }
+    U.toast("Profissional salvo.");
+    App.render();
+  });
+  Anexos.iniciar(p.documentos, 5);
+  Anexos.ligar();
+}
+
+Actions.novoProfSocial = () => abrirFormProfSocial({
+  nome: "", funcao: "", cress: "", formacao: "", dias: "", horarios: "",
+  telefone: "", email: "", obs: "", documentos: []
+});
+Actions.editarProfSocial = id => abrirFormProfSocial(Store.get("profsociais", id));
+Actions.excluirProfSocial = id => {
+  const p = Store.get("profsociais", id);
+  if (confirm(`Excluir o profissional "${p.nome}"?`)) {
+    Store.remover("profsociais", id);
+    U.toast("Profissional excluído.");
     App.render();
   }
 };
