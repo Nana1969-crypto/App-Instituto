@@ -147,6 +147,7 @@ const App = (() => {
           <a href="#/atendimentos/minha-area">&#128274; Sou profissional de saúde — entrar com meu PIN</a>
           <a href="#/assistencia">&#128274; Sou da assistência social — entrar com meu PIN</a>
           <a href="#/financeiro">&#128274; Sou gestor(a) financeiro(a) — entrar com meu PIN</a>
+          <a href="#" id="portao-nuvem">&#9729;&#65039; Já usamos a nuvem — trazer os dados deste instituto</a>
           ${primeiraVez ? "" : `<a href="#" id="portao-esqueci" style="color:var(--text-muted);">Esqueci a senha do administrador</a>`}
         </div>
       </div>`;
@@ -190,6 +191,45 @@ const App = (() => {
     document.getElementById("portao-entrar").addEventListener("click", entrar);
     view.querySelectorAll("input").forEach(i =>
       i.addEventListener("keydown", ev => { if (ev.key === "Enter") entrar(); }));
+
+    /* trazer os dados da nuvem num computador novo (antes de logar) */
+    const linkNuvem = document.getElementById("portao-nuvem");
+    if (linkNuvem) linkNuvem.addEventListener("click", ev => {
+      ev.preventDefault();
+      const urlAtual = (typeof Nuvem !== "undefined" && Nuvem.configurada()) ? Nuvem.endereco() : "";
+      abrirModal("Trazer os dados da nuvem", `
+        <p style="font-size:0.9rem; margin-bottom:12px;">
+          Use isto num computador novo para baixar os dados que já estão na nuvem
+          (inclui as senhas e PINs). Depois é só entrar normalmente.
+        </p>
+        <div class="field">
+          <label for="pn-url">Endereço (Project URL)</label>
+          <input id="pn-url" type="text" placeholder="https://xxxxxxxx.supabase.co" value="${urlAtual}">
+        </div>
+        <div class="field">
+          <label for="pn-key">Chave publicável (anon / public)</label>
+          <input id="pn-key" type="text" placeholder="sb_publishable_..." autocomplete="off">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+          <button type="button" class="btn accent" id="pn-connect">Baixar dados</button>
+        </div>`);
+      const btn = document.getElementById("pn-connect");
+      if (btn) btn.addEventListener("click", async () => {
+        const u = (document.getElementById("pn-url").value || "").trim();
+        const k = (document.getElementById("pn-key").value || "").trim();
+        if (!/^https:\/\/.+\.supabase\.co/i.test(u)) { alert("O endereço deve ser parecido com https://xxxxxxxx.supabase.co"); return; }
+        if (!k) { alert("Cole a chave publicável (anon / public)."); return; }
+        Nuvem.salvarConfig(u, k);
+        aviso("Conectando à nuvem…");
+        const r = await Nuvem.testar();
+        if (!r.ok) { alert("Não foi possível conectar.\n\n" + r.msg); return; }
+        await Nuvem.iniciar();
+        fecharModal();
+        aviso("Dados baixados! Agora entre com sua senha.");
+        render();
+      });
+    });
 
     /* recuperação: redefine só a senha do admin, mantendo todos os dados.
        Só funciona neste computador (quem tem acesso físico já controla tudo). */
