@@ -8,10 +8,28 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-/* liga a sincronização com a nuvem, se estiver configurada */
-if (typeof Nuvem !== "undefined" && Nuvem.configurada()) {
-  window.addEventListener("load", () => { Nuvem.iniciar(); });
-}
+/* Conexão automática com a nuvem:
+   - se o link trouxer ?nuvem=<url>&chave=<chave> (o "link mágico" que o
+     admin compartilha), configura, baixa os dados e limpa a URL;
+   - senão, apenas religa a sincronização se este aparelho já estava conectado. */
+window.addEventListener("load", async () => {
+  if (typeof Nuvem === "undefined") return;
+  const params = new URLSearchParams(location.search);
+  const u = params.get("nuvem");
+  const k = params.get("chave");
+  if (u && k) {
+    Nuvem.salvarConfig(u, k);
+    try {
+      const r = await Nuvem.testar();
+      if (r.ok) await Nuvem.iniciar();
+    } catch (e) { /* ignora — segue como app normal */ }
+    // remove a chave da barra de endereço (não fica no histórico)
+    history.replaceState(null, "", location.pathname + (location.hash || ""));
+    if (typeof App !== "undefined" && App.render) App.render();
+  } else if (Nuvem.configurada()) {
+    Nuvem.iniciar();
+  }
+});
 
 const App = (() => {
   const rotas = {
