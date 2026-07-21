@@ -252,6 +252,21 @@ Views.seguranca = () => {
       </div>
     </div>
 
+    <div class="panel" style="border:2px solid var(--accent);">
+      <h3>&#128190; Backup dos dados (faça sempre!)</h3>
+      <p class="panel-sub">
+        Enquanto o sistema é local, <strong>todos os dados ficam guardados só neste navegador</strong>.
+        Exporte um backup com frequência e guarde o arquivo em local seguro (Google Drive, pen drive).
+        É a sua proteção se o computador falhar — e serve para levar os dados para outro computador ou para a nuvem depois.
+        O arquivo contém dados pessoais: trate com cuidado (LGPD).
+      </p>
+      <div class="head-actions">
+        <button class="btn accent" data-action="backupExportar">&#11015;&#65039; Baixar backup agora (.json)</button>
+        <button class="btn ghost" data-action="backupImportar">&#11014;&#65039; Restaurar backup de um arquivo</button>
+        <input type="file" id="arquivo-backup" accept=".json,application/json" hidden>
+      </div>
+    </div>
+
     ${item("Senha do administrador",
       "A senha principal do sistema. Guarde em local seguro — quem a tem controla todos os acessos.",
       `<button class="btn" data-action="senhaPerfil" data-id="admin">Trocar senha do admin</button>`)}
