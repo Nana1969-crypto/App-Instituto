@@ -109,6 +109,7 @@ Views.financeiro = sub => {
       <p class="panel-sub">O sistema ignora automaticamente lançamentos já importados (sem duplicar)</p>
       <div class="head-actions">
         <button class="btn" data-action="importarSicoob">&#127974; Extrato SICOOB (OFX ou CSV)</button>
+        <button class="btn" data-action="colarExtrato">&#128203; Colar extrato SICOOB (texto)</button>
         <button class="btn" data-action="importarGuru">&#128722; Vendas/assinaturas Guru (CSV)</button>
         <button class="btn accent" data-action="novoLanc">+ Lançamento manual</button>
         <input type="file" id="fin-arquivo" accept=".ofx,.csv,.txt" hidden>
@@ -484,6 +485,99 @@ Actions.importarSicoob = () => lerArquivoFin((texto, nome) => {
 });
 
 Actions.importarGuru = () => lerArquivoFin(texto => importarCSVGenerico(texto, "guru"));
+
+/* ---------------- colar extrato SICOOB em texto ---------------- */
+
+/* Lê o extrato detalhado do SICOOB colado como texto.
+   Formato: "DD/MM  DESCRIÇÃO  1.234,56C" (C=crédito/entrada, D=débito/saída),
+   seguido de linhas de detalhe (Pix, nome, CPF, DOC.) que viram complemento
+   da descrição. Linhas de "SALDO DO DIA"/"SALDO ANTERIOR" são ignoradas. */
+function parseExtratoTextoSicoob(texto, ano) {
+  const linhas = String(texto || "").split(/\r?\n/);
+  const cabecalho = /^\s*(\d{2})\/(\d{2})\s+(.+?)\s+([\d.]+,\d{2})\s*([CD])\s*$/;
+  const registros = [];
+  let atual = null;
+
+  const fechar = () => {
+    if (atual && !isNaN(atual.valor)) registros.push(atual);
+    atual = null;
+  };
+
+  for (const linhaBruta of linhas) {
+    const linha = linhaBruta.replace(/\s+/g, " ").trim();
+    if (!linha) continue;
+
+    const m = linhaBruta.match(cabecalho);
+    if (m) {
+      const desc = m[3].trim();
+      // ignora linhas de saldo (não são lançamentos)
+      if (/saldo/i.test(desc)) { fechar(); continue; }
+      fechar();
+      const dd = m[1], mm = m[2];
+      const bruto = parseValorBR(m[4]);
+      const valor = m[5].toUpperCase() === "D" ? -Math.abs(bruto) : Math.abs(bruto);
+      atual = { data: `${ano}-${mm}-${dd}`, valor, descricao: desc };
+      continue;
+    }
+
+    // linha de saldo isolada — encerra o lançamento em aberto
+    if (/saldo\s+(do\s+dia|anterior|atual|bloqueado)/i.test(linha)) { fechar(); continue; }
+
+    // linha de detalhe: acrescenta à descrição do lançamento atual
+    if (atual) {
+      const extra = linha
+        .replace(/\bDOC\.?:?\s*/i, "")
+        .replace(/\b\d{3}\.?\*{2,3}\.?\*{2,3}-?\*{2}\b/g, "") // CPF mascarado
+        .trim();
+      if (extra && atual.descricao.length < 90) {
+        atual.descricao = (atual.descricao + " · " + extra).slice(0, 120);
+      }
+    }
+  }
+  fechar();
+  return registros;
+}
+
+Actions.colarExtrato = () => {
+  const anoAtual = new Date().getFullYear();
+  const opts = [];
+  for (let a = anoAtual + 1; a >= anoAtual - 6; a--) {
+    opts.push(`<option value="${a}"${a === anoAtual ? " selected" : ""}>${a}</option>`);
+  }
+  App.abrirModal("Colar extrato SICOOB (texto)", `
+    <p style="font-size:0.9rem; margin-bottom:10px;">
+      Copie o extrato detalhado do app/internet banking do SICOOB e cole abaixo.
+      O sistema lê cada lançamento (crédito <b>C</b> = entrada, débito <b>D</b> = saída)
+      e ignora as linhas de <em>“Saldo do dia”</em>.
+    </p>
+    <div class="field" style="max-width:160px;">
+      <label for="extrato-ano">Ano do extrato *</label>
+      <select id="extrato-ano">${opts.join("")}</select>
+    </div>
+    <div class="field">
+      <label for="extrato-texto">Texto do extrato</label>
+      <textarea id="extrato-texto" rows="10" placeholder="01/06  Recebimento Pix  110,00C&#10;    Fulano de Tal&#10;03/06  Pagamento Pix  80,00D&#10;..."
+        style="width:100%; font-family:monospace; font-size:0.82rem;"></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+      <button type="button" class="btn accent" data-modal-action="processarExtrato">Ler extrato</button>
+    </div>`);
+};
+
+Actions.processarExtrato = () => {
+  const ta = document.getElementById("extrato-texto");
+  const sel = document.getElementById("extrato-ano");
+  const texto = ta ? ta.value : "";
+  const ano = sel ? sel.value : String(new Date().getFullYear());
+  if (!texto.trim()) { alert("Cole o texto do extrato antes de continuar."); return; }
+  const registros = parseExtratoTextoSicoob(texto, ano);
+  if (!registros.length) {
+    alert("Não reconheci nenhum lançamento.\nConfira se colou o extrato detalhado (com data, descrição e valor terminando em C ou D).");
+    return;
+  }
+  confirmarImportacao(registros, "sicoob");
+};
 
 /* ---------------- lançamento manual, categorias, exclusão ---------------- */
 
