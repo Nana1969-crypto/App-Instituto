@@ -3,13 +3,14 @@
    quando há internet), com fallback para o cache quando offline. */
 "use strict";
 
-const CACHE = "bzn-painel-v1";
+const CACHE = "bzn-painel-v2";
 const ESSENCIAIS = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/util.js",
   "./js/store.js",
+  "./js/nuvem.js",
   "./js/anexos.js",
   "./js/charts.js",
   "./js/app.js",
@@ -49,6 +50,8 @@ self.addEventListener("activate", ev => {
 self.addEventListener("fetch", ev => {
   const req = ev.request;
   if (req.method !== "GET") return;
+  // deixa passar direto tudo que não é do próprio site (ex.: chamadas à nuvem/Supabase)
+  if (new URL(req.url).origin !== self.location.origin) return;
   ev.respondWith(
     fetch(req)
       .then(resp => {

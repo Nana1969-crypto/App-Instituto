@@ -81,7 +81,11 @@ const Store = (() => {
     if (db.cursos.length === 0 && !localStorage.getItem(KEY)) {
       seedCursos();
     }
-    // migrações leves para backups/dados antigos
+    carregarMigracoes();
+  }
+
+  // migrações leves para backups/dados antigos/dados vindos da nuvem
+  function carregarMigracoes() {
     if (!db.config) db.config = {};
     if (db.config.presencaMinima == null) db.config.presencaMinima = 75;
     if (!Array.isArray(db.config.encaminhamentos) || !db.config.encaminhamentos.length) {
@@ -331,8 +335,28 @@ const Store = (() => {
     return n;
   }
 
-  function salvar() {
+  function gravarLocal() {
     localStorage.setItem(KEY, JSON.stringify(db));
+  }
+
+  function salvar() {
+    gravarLocal();
+    // sincroniza com a nuvem, se configurada (não bloqueia a interface)
+    if (typeof Nuvem !== "undefined" && Nuvem.configurada()) Nuvem.agendarEnvio();
+  }
+
+  /* devolve uma cópia dos dados atuais (para enviar à nuvem/backup) */
+  function snapshot() {
+    return JSON.parse(JSON.stringify(db));
+  }
+
+  /* substitui todos os dados pelos vindos da nuvem, SEM reenviar à nuvem
+     (evita laço de sincronização). Grava apenas no navegador. */
+  function aplicarRemoto(dados) {
+    if (!dados || typeof dados !== "object") return;
+    db = Object.assign(vazio(), dados);
+    carregarMigracoes();
+    gravarLocal();
   }
 
   /* Os 5 cursos iniciais do instituto */
@@ -968,6 +992,7 @@ const Store = (() => {
     resumoAtendimentos, atendimentosPorProfissional, resumoFinanceiro, resumoFinanceiroCursos,
     enchenteGeral, encaminhamentoGeral, resumoGratuidade, condicaoAluno,
     exportarJSON, importarJSON, limparTudo,
+    snapshot, aplicarRemoto,
     get config() { return db.config; }
   };
 })();

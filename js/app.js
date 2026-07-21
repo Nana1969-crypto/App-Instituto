@@ -8,6 +8,11 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+/* liga a sincronização com a nuvem, se estiver configurada */
+if (typeof Nuvem !== "undefined" && Nuvem.configurada()) {
+  window.addEventListener("load", () => { Nuvem.iniciar(); });
+}
+
 const App = (() => {
   const rotas = {
     dashboard: () => Views.dashboard(),

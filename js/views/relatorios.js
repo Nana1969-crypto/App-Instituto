@@ -201,6 +201,96 @@ Actions.csvCruzamento = () => {
   U.toast("Planilha de cruzamento exportada.");
 };
 
+/* ---------- conexão com a nuvem (Supabase) ---------- */
+
+function painelNuvem() {
+  const conectada = typeof Nuvem !== "undefined" && Nuvem.configurada();
+  const endereco = conectada ? Nuvem.endereco() : "";
+  return `
+    <div class="panel" style="border:2px solid ${conectada ? "var(--good)" : "var(--border)"};">
+      <h3>&#9729;&#65039; Nuvem — dados compartilhados entre computadores</h3>
+      <p class="panel-sub">
+        ${conectada
+          ? `<strong style="color:var(--good);">Conectado ✓</strong> a <code>${U.esc(endereco)}</code>.
+             O que cada pessoa salvar aparece para as outras (atualiza sozinho em poucos segundos).`
+          : `<strong>Ainda não conectado.</strong> Enquanto isso, os dados ficam só neste navegador.
+             Conecte à nuvem para a equipe acessar de máquinas diferentes vendo os mesmos dados.`}
+      </p>
+      <div class="head-actions">
+        <button class="btn accent" data-action="nuvemConfig">${conectada ? "Alterar conexão" : "Conectar à nuvem"}</button>
+        ${conectada ? `
+          <button class="btn" data-action="nuvemTestar">Testar conexão</button>
+          <button class="btn ghost" data-action="nuvemEnviar">Enviar dados agora</button>
+          <button class="btn danger" data-action="nuvemDesconectar">Desconectar</button>` : ""}
+      </div>
+      ${conectada ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:10px;">
+        Dica: se duas pessoas editarem exatamente ao mesmo tempo, vale a última que salvar. Para o dia a dia da equipe, isso não costuma ser problema.</p>` : ""}
+    </div>`;
+}
+
+Actions.nuvemConfig = () => {
+  if (App.nivel() !== "admin") { U.toast("Apenas o administrador configura a nuvem."); return; }
+  const urlAtual = (typeof Nuvem !== "undefined" && Nuvem.configurada()) ? Nuvem.endereco() : "";
+  App.abrirModal("Conectar à nuvem", `
+    <p style="font-size:0.9rem; margin-bottom:12px;">
+      Cole abaixo os dados do seu projeto Supabase (veja o guia passo a passo).
+      A <strong>chave publicável</strong> pode ser usada aqui com segurança.
+    </p>
+    <div class="field">
+      <label for="nv-url">Endereço (Project URL)</label>
+      <input id="nv-url" type="text" placeholder="https://xxxxxxxx.supabase.co" value="${U.esc(urlAtual)}">
+    </div>
+    <div class="field">
+      <label for="nv-key">Chave publicável (anon / public)</label>
+      <input id="nv-key" type="text" placeholder="sb_publishable_..." autocomplete="off">
+    </div>
+    <p style="font-size:0.8rem; color:var(--text-muted);">Ao conectar, este aparelho passa a sincronizar automaticamente.</p>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-modal-action="cancelar">Cancelar</button>
+      <button type="button" class="btn accent" data-modal-action="nuvemSalvar">Conectar</button>
+    </div>`);
+};
+
+Actions.nuvemSalvar = async () => {
+  const url = (document.getElementById("nv-url").value || "").trim();
+  const key = (document.getElementById("nv-key").value || "").trim();
+  if (!/^https:\/\/.+\.supabase\.co/i.test(url)) {
+    alert("O endereço deve ser parecido com https://xxxxxxxx.supabase.co");
+    return;
+  }
+  if (!key) { alert("Cole a chave publicável (anon / public)."); return; }
+  Nuvem.salvarConfig(url, key);
+  U.toast("Testando a conexão…");
+  const r = await Nuvem.testar();
+  if (!r.ok) {
+    alert("Não foi possível conectar.\n\n" + r.msg + "\n\nConfira o endereço e a chave e tente de novo.");
+    return;
+  }
+  await Nuvem.iniciar();
+  App.fecharModal();
+  U.toast("Nuvem conectada! Sincronizando…");
+  App.render();
+};
+
+Actions.nuvemTestar = async () => {
+  U.toast("Testando…");
+  const r = await Nuvem.testar();
+  alert(r.ok ? "✅ " + r.msg : "⚠️ " + r.msg);
+};
+
+Actions.nuvemEnviar = async () => {
+  U.toast("Enviando para a nuvem…");
+  await Nuvem.enviarAgora();
+  U.toast("Dados enviados para a nuvem.");
+};
+
+Actions.nuvemDesconectar = () => {
+  if (!confirm("Desconectar este aparelho da nuvem?\n\nOs dados continuam guardados aqui neste navegador, mas param de sincronizar com os outros computadores.")) return;
+  Nuvem.limparConfig();
+  U.toast("Desconectado da nuvem.");
+  App.render();
+};
+
 /* ---------- backup ---------- */
 
 Actions.backupExportar = () => {
@@ -266,6 +356,8 @@ Views.seguranca = () => {
         <input type="file" id="arquivo-backup" accept=".json,application/json" hidden>
       </div>
     </div>
+
+    ${painelNuvem()}
 
     ${item("Senha do administrador",
       "A senha principal do sistema. Guarde em local seguro — quem a tem controla todos os acessos.",
