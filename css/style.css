@@ -151,8 +151,10 @@ nav.tabs a.active { background: var(--accent); color: #fff; font-weight: 600; }
 nav.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .menu-btn {
   display: none; background: none; border: none; color: var(--on-navy);
-  font-size: 1.3rem; cursor: pointer; padding: 4px 8px;
+  font-size: 1.3rem; cursor: pointer; padding: 4px 8px; flex-shrink: 0;
 }
+/* atalhos de Logins/Sair que só aparecem dentro do menu ☰ no celular */
+.nav-extra { display: none; }
 .sair-btn {
   background: none; border: 1px solid var(--on-navy-muted); color: var(--on-navy-muted);
   border-radius: 999px; padding: 5px 14px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
@@ -507,6 +509,13 @@ footer.foot svg { width: 18px; height: 18px; color: var(--navy); }
   nav.tabs.open { display: flex; }
   .menu-btn { display: block; }
   .view { padding: 20px 16px 48px; }
+  /* no celular, Logins e Sair vão para dentro do menu ☰ (liberam a barra do topo) */
+  #btn-seguranca, #btn-sair-sistema { display: none !important; }
+  nav.tabs.open .nav-extra:not([hidden]) {
+    display: block;
+    margin-top: 6px; padding-top: 12px;
+    border-top: 1px solid var(--on-navy-muted);
+  }
 }
 
 /* ---------- impressão / PDF ----------

@@ -93,6 +93,12 @@ const App = (() => {
     const btnSeg = document.getElementById("btn-seguranca");
     if (btnSeg) btnSeg.hidden = nivel() !== "admin";
 
+    /* versões dos botões dentro do menu ☰ (celular) */
+    const navLogins = document.getElementById("nav-logins");
+    if (navLogins) navLogins.hidden = nivel() !== "admin";
+    const navSair = document.getElementById("nav-sair");
+    if (navSair) navSair.hidden = !nivel();
+
     document.querySelectorAll("#nav-tabs a").forEach(a => {
       const r = a.dataset.route;
       a.classList.toggle("active",
@@ -322,14 +328,16 @@ const App = (() => {
   const btnSeguranca = document.getElementById("btn-seguranca");
   if (btnSeguranca) btnSeguranca.addEventListener("click", () => { location.hash = "#/seguranca"; });
 
+  const sair = () => {
+    sessionStorage.removeItem(CHAVE_NIVEL);
+    document.getElementById("nav-tabs").classList.remove("open");
+    location.hash = "#/dashboard";
+    render();
+  };
   const btnSairSistema = document.getElementById("btn-sair-sistema");
-  if (btnSairSistema) {
-    btnSairSistema.addEventListener("click", () => {
-      sessionStorage.removeItem(CHAVE_NIVEL);
-      location.hash = "#/dashboard";
-      render();
-    });
-  }
+  if (btnSairSistema) btnSairSistema.addEventListener("click", sair);
+  const navSairLink = document.getElementById("nav-sair");
+  if (navSairLink) navSairLink.addEventListener("click", ev => { ev.preventDefault(); sair(); });
 
   window.addEventListener("hashchange", render);
   window.addEventListener("DOMContentLoaded", render);
